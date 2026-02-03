@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识管理智能体 - MCP Web客户端</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.connecting {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .messages {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: #f8f9fa;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .message.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .message.warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        .endpoint-info {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 知识管理智能体 - MCP Web客户端</h1>
+        
+        <div id="status" class="status disconnected">
+            ❌ 未连接到MCP服务器
+        </div>
+        
+        <div class="controls">
+            <button onclick="connectMCP()">连接MCP服务器</button>
+            <button onclick="disconnectMCP()">断开连接</button>
+            <button onclick="sendInitialize()" id="initBtn" disabled>初始化MCP</button>
+            <button onclick="listTools()" id="toolsBtn" disabled>列出工具</button>
+            <button onclick="testSearch()" id="searchBtn" disabled>测试搜索</button>
+            <button onclick="clearMessages()">清空消息</button>
+        </div>
+        
+        <div class="input-group">
+            <label for="serverUrl">MCP代理服务器地址:</label>
+            <input type="text" id="serverUrl" value="http://localhost:3000" 
+                   placeholder="http://localhost:3000">
+            <small>使用MCP Web代理服务器，无需CORS配置</small>
+        </div>
+        
+        <div class="endpoint-info" id="endpointInfo" style="display: none;">
+            <strong>连接信息:</strong><br>
+            SSE端点: <span id="sseEndpoint">-</span><br>
+            POST端点: <span id="postEndpoint">-</span>
+        </div>
+        
+        <div class="input-group">
+            <label for="searchQuery">搜索查询:</label>
+            <input type="text" id="searchQuery" value="人工智能" 
+                   placeholder="输入搜索关键词">
+        </div>
+        
+        <div class="input-group">
+            <label for="messages">MCP消息日志:</label>
+            <div id="messages" class="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let postEndpoint = null;
+        let isConnected = false;
+        let messageId = 1;
+
+        function addMessage(text, type = 'info') {
+            const messages = document.getElementById('messages');
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+            message.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${text}`;
+            messages.appendChild(message);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function updateStatus(status, text) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${status}`;
+            statusEl.innerHTML = text;
+            
+            // 更新按钮状态
+            const buttons = ['initBtn', 'toolsBtn', 'searchBtn'];
+            buttons.forEach(id => {
+                document.getElementById(id).disabled = status !== 'connected';
+            });
+        }
+
+        function updateEndpointInfo(sseUrl, postUrl) {
+            document.getElementById('sseEndpoint').textContent = sseUrl || '-';
+            document.getElementById('postEndpoint').textContent = postUrl || '-';
+            document.getElementById('endpointInfo').style.display = postUrl ? 'block' : 'none';
+        }
+
+        async function connectMCP() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            
+            updateStatus('connecting', '🔄 正在连接MCP代理服务器...');
+            addMessage(`正在连接到MCP代理服务器: ${serverUrl}`, 'info');
+            
+            try {
+                // 检查服务器状态
+                const statusResponse = await fetch(`${serverUrl}/status`);
+                if (!statusResponse.ok) {
+                    throw new Error('无法连接到代理服务器');
+                }
+                
+                const status = await statusResponse.json();
+                addMessage(`代理服务器状态: ${status.message}`, 'success');
+                
+                // 设置POST端点
+                postEndpoint = `${serverUrl}/mcp`;
+                updateEndpointInfo(serverUrl, postEndpoint);
+                updateStatus('connected', '✅ 已连接到MCP代理服务器');
+                
+            } catch (error) {
+                addMessage(`连接失败: ${error.message}`, 'error');
+                updateStatus('disconnected', '❌ 连接失败');
+            }
+        }
+
+        function disconnectMCP() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                postEndpoint = null;
+                updateStatus('disconnected', '❌ 未连接到MCP服务器');
+                updateEndpointInfo(null, null);
+                addMessage('MCP连接已断开', 'info');
+            }
+        }
+
+        async function sendMCPMessage(message) {
+            if (!postEndpoint) {
+                addMessage('错误: 没有可用的POST端点', 'error');
+                return null;
+            }
+
+            try {
+                const response = await fetch(postEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(message)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                addMessage(`发送MCP消息成功: ${JSON.stringify(message, null, 2)}`, 'success');
+                return result;
+            } catch (error) {
+                addMessage(`发送MCP消息失败: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function sendInitialize() {
+            const initMessage = {
+                jsonrpc: "2.0",
+                id: messageId++,
+                method: "initialize",
+                params: {
+                    protocolVersion: "2024-11-05",
+                    capabilities: {
+                        roots: {
+                            listChanged: true
+                        }
+                    },
+                    clientInfo: {
+                        name: "Knowledge Agent Web Client",
+                        version: "1.0.0"
+                    }
+                }
+            };
+
+            addMessage('发送初始化请求...', 'info');
+            await sendMCPMessage(initMessage);
+        }
+
+        async function listTools() {
+            const toolsMessage = {
+                jsonrpc: "2.0",
+                id: messageId++,
+                method: "tools/list",
+                params: {}
+            };
+
+            addMessage('请求工具列表...', 'info');
+            await sendMCPMessage(toolsMessage);
+        }
+
+        async function testSearch() {
+            const query = document.getElementById('searchQuery').value;
+            const searchMessage = {
+                jsonrpc: "2.0",
+                id: messageId++,
+                method: "tools/call",
+                params: {
+                    name: "search_knowledge",
+                    arguments: {
+                        query: query,
+                        max_results: 10
+                    }
+                }
+            };
+
+            addMessage(`测试搜索: "${query}"`, 'info');
+            await sendMCPMessage(searchMessage);
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        // 页面加载时的初始化
+        window.onload = function() {
+            addMessage('MCP Web客户端已加载', 'success');
+            addMessage('使用说明:', 'info');
+            addMessage('1. 启动知识管理智能体: python knowledge_agent_server.py --transport sse', 'warning');
+            addMessage('2. 确保服务器支持CORS (可能需要额外配置)', 'warning');
+            addMessage('3. 点击"连接MCP服务器"建立连接', 'info');
+            addMessage('4. 连接成功后，点击"初始化MCP"进行协议握手', 'info');
+            addMessage('5. 使用各种功能测试MCP工具', 'info');
+        };
+
+        // 页面关闭时清理连接
+        window.onbeforeunload = function() {
+            if (eventSource) {
+                eventSource.close();
+            }
+        };
+    </script>
+</body>
+</html>
