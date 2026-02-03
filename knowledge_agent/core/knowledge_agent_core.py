@@ -6,6 +6,8 @@ import logging
 from typing import Dict, Any, List, Optional
 from ..models import KnowledgeItem, DataSource, Category, Tag, Relationship
 from ..interfaces import DataSourceProcessor, KnowledgeOrganizer, SearchEngine, StorageManager
+from ..storage import SQLiteStorageManager
+from ..organizers import KnowledgeOrganizerImpl
 from .exceptions import KnowledgeAgentError, ConfigurationError
 
 
@@ -40,8 +42,21 @@ class KnowledgeAgentCore:
     
     def _initialize_components(self) -> None:
         """Initialize core components based on configuration."""
-        # Component initialization will be implemented in subsequent tasks
-        self.logger.info("Component initialization will be completed in subsequent tasks")
+        # Initialize storage manager
+        storage_config = self.config.get("storage", {})
+        storage_type = storage_config.get("type", "sqlite")
+        
+        if storage_type == "sqlite":
+            db_path = storage_config.get("path", "knowledge_agent.db")
+            self._storage_manager = SQLiteStorageManager(db_path)
+            self.logger.info(f"Initialized SQLite storage at {db_path}")
+        
+        # Initialize knowledge organizer
+        if self._storage_manager:
+            self._knowledge_organizer = KnowledgeOrganizerImpl(self._storage_manager)
+            self.logger.info("Initialized knowledge organizer")
+        
+        self.logger.info("Component initialization completed")
     
     def collect_knowledge(self, source: DataSource) -> KnowledgeItem:
         """
@@ -82,8 +97,50 @@ class KnowledgeAgentCore:
         try:
             self.logger.info(f"Organizing knowledge item: {item.id}")
             
-            # This will be implemented in task 5
-            raise NotImplementedError("Knowledge organization will be implemented in task 5")
+            if not self._knowledge_organizer:
+                raise KnowledgeAgentError("Knowledge organizer not initialized")
+            
+            # Classify the item
+            categories = self._knowledge_organizer.classify(item)
+            self.logger.info(f"Classified into {len(categories)} categories")
+            
+            # Generate tags
+            tags = self._knowledge_organizer.generate_tags(item)
+            self.logger.info(f"Generated {len(tags)} tags")
+            
+            # Find relationships
+            relationships = self._knowledge_organizer.find_relationships(item)
+            self.logger.info(f"Found {len(relationships)} relationships")
+            
+            # Update the item with categories and tags
+            for category in categories:
+                item.add_category(category)
+            for tag in tags:
+                item.add_tag(tag)
+            
+            # Save the organized item
+            if self._storage_manager:
+                self._storage_manager.save_knowledge_item(item)
+            
+            # Update knowledge graph with relationships
+            if relationships:
+                self._knowledge_organizer.update_knowledge_graph(relationships)
+            
+            return {
+                "item_id": item.id,
+                "categories": [{"id": c.id, "name": c.name, "confidence": c.confidence} for c in categories],
+                "tags": [{"id": t.id, "name": t.name} for t in tags],
+                "relationships": [
+                    {
+                        "target_id": r.target_id,
+                        "type": r.relationship_type.value,
+                        "strength": r.strength,
+                        "description": r.description
+                    }
+                    for r in relationships
+                ],
+                "success": True
+            }
             
         except Exception as e:
             self.logger.error(f"Error organizing knowledge: {e}")
@@ -203,13 +260,31 @@ class KnowledgeAgentCore:
         try:
             self.logger.info("Retrieving knowledge base statistics")
             
-            # This will be implemented in task 2
+            if not self._storage_manager:
+                return {
+                    "total_items": 0,
+                    "total_categories": 0,
+                    "total_tags": 0,
+                    "total_relationships": 0,
+                    "message": "Storage manager not initialized",
+                }
+            
+            # Get actual statistics from storage
+            items = self._storage_manager.get_all_knowledge_items()
+            categories = self._storage_manager.get_all_categories()
+            tags = self._storage_manager.get_all_tags()
+            
+            # Count relationships
+            total_relationships = 0
+            for item in items:
+                relationships = self._storage_manager.get_relationships_for_item(item.id)
+                total_relationships += len(relationships)
+            
             return {
-                "total_items": 0,
-                "total_categories": 0,
-                "total_tags": 0,
-                "total_relationships": 0,
-                "message": "Statistics will be implemented in task 2",
+                "total_items": len(items),
+                "total_categories": len(categories),
+                "total_tags": len(tags),
+                "total_relationships": total_relationships,
             }
             
         except Exception as e:

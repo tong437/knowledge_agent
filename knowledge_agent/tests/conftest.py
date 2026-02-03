@@ -13,6 +13,7 @@ from knowledge_agent.models import (
     KnowledgeItem, Category, Tag, Relationship, DataSource, SourceType
 )
 from knowledge_agent.core import KnowledgeAgentCore
+from knowledge_agent.storage import SQLiteStorageManager
 
 
 @pytest.fixture
@@ -21,6 +22,18 @@ def temp_dir():
     temp_path = tempfile.mkdtemp()
     yield Path(temp_path)
     shutil.rmtree(temp_path)
+
+
+@pytest.fixture
+def storage_manager(temp_dir):
+    """Create a storage manager instance for testing."""
+    db_path = str(temp_dir / "test_knowledge.db")
+    manager = SQLiteStorageManager(db_path)
+    yield manager
+    # Close any open connections
+    import gc
+    del manager
+    gc.collect()
 
 
 @pytest.fixture
@@ -85,7 +98,7 @@ def sample_data_source():
 def knowledge_agent_core():
     """Create a knowledge agent core instance for testing."""
     config = {
-        "storage": {"type": "memory"},
+        "storage": {"type": "sqlite", "path": ":memory:"},
         "search": {"type": "simple"},
         "organization": {"type": "basic"},
     }

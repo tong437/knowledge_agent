@@ -37,11 +37,23 @@ class TestKnowledgeAgentCore:
         with pytest.raises(KnowledgeAgentError, match="will be implemented in task 6"):
             core.search_knowledge("test query")
     
-    def test_organize_knowledge_not_implemented(self, knowledge_agent_core, sample_knowledge_item):
-        """Test that organize_knowledge raises KnowledgeAgentError with NotImplementedError."""
+    def test_organize_knowledge(self, knowledge_agent_core, sample_knowledge_item):
+        """Test organizing a knowledge item."""
         core = knowledge_agent_core
-        with pytest.raises(KnowledgeAgentError, match="will be implemented in task 5"):
-            core.organize_knowledge(sample_knowledge_item)
+        
+        # Save the item first
+        if core._storage_manager:
+            core._storage_manager.save_knowledge_item(sample_knowledge_item)
+        
+        # Organize the item
+        result = core.organize_knowledge(sample_knowledge_item)
+        
+        assert isinstance(result, dict)
+        assert result["success"] is True
+        assert "categories" in result
+        assert "tags" in result
+        assert "relationships" in result
+        assert result["item_id"] == sample_knowledge_item.id
     
     def test_get_statistics(self, knowledge_agent_core):
         """Test getting knowledge base statistics."""

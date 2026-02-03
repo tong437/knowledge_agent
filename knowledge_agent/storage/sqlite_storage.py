@@ -32,11 +32,40 @@ class SQLiteStorageManager(StorageManager):
             db_path: Path to the SQLite database file
         """
         self.db_path = db_path
+        self._persistent_conn = None
+        
+        # For :memory: databases, keep a persistent connection
+        if db_path == ":memory:":
+            self._persistent_conn = sqlite3.connect(db_path, check_same_thread=False)
+            self._persistent_conn.execute("PRAGMA foreign_keys = ON")
+        
         self._init_database()
+    
+    def _get_connection(self):
+        """Get a database connection (persistent for :memory:, new for file-based)."""
+        if self._persistent_conn:
+            return self._persistent_conn
+        return sqlite3.connect(self.db_path)
+    
+    def _use_connection(self):
+        """Context manager for database connections."""
+        if self._persistent_conn:
+            # For persistent connections, don't close
+            class PersistentConnectionContext:
+                def __init__(self, conn):
+                    self.conn = conn
+                def __enter__(self):
+                    return self.conn
+                def __exit__(self, *args):
+                    self.conn.commit()  # Commit but don't close
+            return PersistentConnectionContext(self._persistent_conn)
+        else:
+            # For file-based, use normal context manager
+            return sqlite3.connect(self.db_path)
     
     def _init_database(self) -> None:
         """Initialize the database schema."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             conn.execute("PRAGMA foreign_keys = ON")
             
             # Knowledge items table
@@ -118,7 +147,7 @@ class SQLiteStorageManager(StorageManager):
     
     def save_knowledge_item(self, item: KnowledgeItem) -> None:
         """Save a knowledge item to storage."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             try:
                 # Save the main knowledge item
                 conn.execute("""
@@ -195,7 +224,7 @@ class SQLiteStorageManager(StorageManager):
     
     def get_knowledge_item(self, item_id: str) -> Optional[KnowledgeItem]:
         """Retrieve a knowledge item by ID."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             conn.row_factory = sqlite3.Row
             
             # Get the main item
@@ -269,7 +298,7 @@ class SQLiteStorageManager(StorageManager):
     
     def get_all_knowledge_items(self) -> List[KnowledgeItem]:
         """Retrieve all knowledge items from storage."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             conn.row_factory = sqlite3.Row
             
             cursor = conn.execute("SELECT id FROM knowledge_items")
@@ -285,7 +314,7 @@ class SQLiteStorageManager(StorageManager):
     
     def delete_knowledge_item(self, item_id: str) -> bool:
         """Delete a knowledge item from storage."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             try:
                 cursor = conn.execute("DELETE FROM knowledge_items WHERE id = ?", (item_id,))
                 conn.commit()
@@ -302,7 +331,7 @@ class SQLiteStorageManager(StorageManager):
     
     def save_category(self, category: Category) -> None:
         """Save a category to storage."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             try:
                 conn.execute("""
                     INSERT OR REPLACE INTO categories 
@@ -325,7 +354,7 @@ class SQLiteStorageManager(StorageManager):
     
     def get_all_categories(self) -> List[Category]:
         """Retrieve all categories from storage."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             conn.row_factory = sqlite3.Row
             
             cursor = conn.execute("SELECT * FROM categories")
@@ -344,7 +373,7 @@ class SQLiteStorageManager(StorageManager):
     
     def save_tag(self, tag: Tag) -> None:
         """Save a tag to storage."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             try:
                 conn.execute("""
                     INSERT OR REPLACE INTO tags 
@@ -366,7 +395,7 @@ class SQLiteStorageManager(StorageManager):
     
     def get_all_tags(self) -> List[Tag]:
         """Retrieve all tags from storage."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             conn.row_factory = sqlite3.Row
             
             cursor = conn.execute("SELECT * FROM tags")
@@ -384,7 +413,7 @@ class SQLiteStorageManager(StorageManager):
     
     def save_relationship(self, relationship: Relationship) -> None:
         """Save a relationship to storage."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             try:
                 conn.execute("""
                     INSERT OR REPLACE INTO relationships 
@@ -407,7 +436,7 @@ class SQLiteStorageManager(StorageManager):
     
     def get_relationships_for_item(self, item_id: str) -> List[Relationship]:
         """Get all relationships for a specific knowledge item."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             conn.row_factory = sqlite3.Row
             
             cursor = conn.execute("""
@@ -440,7 +469,7 @@ class SQLiteStorageManager(StorageManager):
         }
         
         # Get all relationships
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute("SELECT * FROM relationships")
             
@@ -489,7 +518,7 @@ class SQLiteStorageManager(StorageManager):
     
     def get_database_stats(self) -> Dict[str, int]:
         """Get database statistics."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             stats = {}
             
             # Count knowledge items
@@ -514,7 +543,7 @@ class SQLiteStorageManager(StorageManager):
         """Check data integrity and return any issues found."""
         issues = []
         
-        with sqlite3.connect(self.db_path) as conn:
+        with self._use_connection() as conn:
             conn.row_factory = sqlite3.Row
             
             # Check for orphaned category references
@@ -571,3 +600,10 @@ class SQLiteStorageManager(StorageManager):
             "issues": issues,
             "checked_at": datetime.now().isoformat()
         }
+
+    def close(self) -> None:
+        """Close the database connection (for persistent connections)."""
+        if self._persistent_conn:
+            self._persistent_conn.close()
+            self._persistent_conn = None
+            logger.info("Closed persistent database connection")
