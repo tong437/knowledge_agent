@@ -46,7 +46,7 @@ class SearchOptions:
     """
     
     max_results: int = 50
-    min_relevance: float = 0.1
+    min_relevance: float = 0.05  # 降低阈值以捕获更多相关结果
     include_categories: List[str] = field(default_factory=list)
     exclude_categories: List[str] = field(default_factory=list)
     include_tags: List[str] = field(default_factory=list)
