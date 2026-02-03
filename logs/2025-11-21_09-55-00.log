@@ -1,0 +1,33 @@
+2025-11-21 09:55:00 | DEBUG    | mcp.server.lowlevel.server:__init__:157 - Initializing server 'YA_MCPServer_DeepReport'
+2025-11-21 09:55:00 | DEBUG    | mcp.server.lowlevel.server:decorator:414 - Registering handler for ListToolsRequest
+2025-11-21 09:55:00 | DEBUG    | mcp.server.lowlevel.server:decorator:486 - Registering handler for CallToolRequest
+2025-11-21 09:55:00 | DEBUG    | mcp.server.lowlevel.server:decorator:281 - Registering handler for ListResourcesRequest
+2025-11-21 09:55:00 | DEBUG    | mcp.server.lowlevel.server:decorator:316 - Registering handler for ReadResourceRequest
+2025-11-21 09:55:00 | DEBUG    | mcp.server.lowlevel.server:decorator:243 - Registering handler for PromptListRequest
+2025-11-21 09:55:00 | DEBUG    | mcp.server.lowlevel.server:decorator:265 - Registering handler for GetPromptRequest
+2025-11-21 09:55:00 | DEBUG    | mcp.server.lowlevel.server:decorator:301 - Registering handler for ListResourceTemplatesRequest
+2025-11-21 09:55:00 | INFO     | YA_MCPServer_Tools:register_tools:82 - Registered 2 tools to MCP
+2025-11-21 09:55:00 | INFO     | YA_MCPServer_Prompts:register_prompts:74 - Registered 1 prompts to MCP
+2025-11-21 09:55:00 | DEBUG    | mcp.server.fastmcp.resources.resource_manager:add_resource:41 - Adding resource
+2025-11-21 09:55:00 | INFO     | YA_MCPServer_Resources:register_resources:88 - Registered 2 resources to MCP
+2025-11-21 09:55:00 | INFO     | YA_MCPServer_DeepReport:start:125 - Starting MCP server: YA_MCPServer_DeepReport
+2025-11-21 09:55:00 | INFO     | YA_MCPServer_DeepReport:run_sse:77 - Running MCP server via SSE: YA_MCPServer_DeepReport (127.0.0.1:12345)
+2025-11-21 09:55:00 | DEBUG    | mcp.server.sse:__init__:119 - SseServerTransport initialized with endpoint: /messages/
+2025-11-21 09:55:00 | DEBUG    | asyncio:__init__:54 - Using selector: KqueueSelector
+2025-11-21 09:55:23 | DEBUG    | mcp.server.sse:connect_sse:134 - Setting up SSE connection
+2025-11-21 09:55:23 | DEBUG    | mcp.server.sse:connect_sse:146 - Created new session with ID: abbd8271-b9fb-4b12-a80c-f5d811c36160
+2025-11-21 09:55:23 | DEBUG    | mcp.server.sse:connect_sse:195 - Starting SSE response task
+2025-11-21 09:55:23 | DEBUG    | mcp.server.sse:connect_sse:198 - Yielding read and write streams
+2025-11-21 09:55:23 | DEBUG    | mcp.server.sse:sse_writer:166 - Starting SSE writer
+2025-11-21 09:55:23 | DEBUG    | mcp.server.sse:sse_writer:169 - Sent endpoint event: /messages/?session_id=abbd8271b9fb4b12a80cf5d811c36160
+2025-11-21 09:55:23 | DEBUG    | sse_starlette.sse:_stream_response:179 - chunk: b'event: endpoint\r\ndata: /messages/?session_id=abbd8271b9fb4b12a80cf5d811c36160\r\n\r\n'
+2025-11-21 09:55:38 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 01:55:38.700893+00:00\r\n\r\n'
+2025-11-21 09:55:53 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 01:55:53.703276+00:00\r\n\r\n'
+2025-11-21 09:56:08 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 01:56:08.705587+00:00\r\n\r\n'
+2025-11-21 09:56:23 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 01:56:23.708177+00:00\r\n\r\n'
+2025-11-21 09:56:38 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 01:56:38.711375+00:00\r\n\r\n'
+2025-11-21 09:56:53 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 01:56:53.712784+00:00\r\n\r\n'
+2025-11-21 09:57:08 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 01:57:08.714926+00:00\r\n\r\n'
+2025-11-21 09:57:23 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 01:57:23.716361+00:00\r\n\r\n'
+2025-11-21 09:57:38 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 01:57:38.717649+00:00\r\n\r\n'
+2025-11-21 09:57:53 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 01:57:53.718967+00:00\r\n\r\n'

@@ -1,0 +1,186 @@
+2025-11-21 10:17:47 | DEBUG    | mcp.server.lowlevel.server:__init__:157 - Initializing server 'YA_MCPServer_DeepReport'
+2025-11-21 10:17:47 | DEBUG    | mcp.server.lowlevel.server:decorator:414 - Registering handler for ListToolsRequest
+2025-11-21 10:17:47 | DEBUG    | mcp.server.lowlevel.server:decorator:486 - Registering handler for CallToolRequest
+2025-11-21 10:17:47 | DEBUG    | mcp.server.lowlevel.server:decorator:281 - Registering handler for ListResourcesRequest
+2025-11-21 10:17:47 | DEBUG    | mcp.server.lowlevel.server:decorator:316 - Registering handler for ReadResourceRequest
+2025-11-21 10:17:47 | DEBUG    | mcp.server.lowlevel.server:decorator:243 - Registering handler for PromptListRequest
+2025-11-21 10:17:47 | DEBUG    | mcp.server.lowlevel.server:decorator:265 - Registering handler for GetPromptRequest
+2025-11-21 10:17:47 | DEBUG    | mcp.server.lowlevel.server:decorator:301 - Registering handler for ListResourceTemplatesRequest
+2025-11-21 10:17:47 | INFO     | YA_MCPServer_Tools:register_tools:82 - Registered 2 tools to MCP
+2025-11-21 10:17:47 | INFO     | YA_MCPServer_Prompts:register_prompts:74 - Registered 1 prompts to MCP
+2025-11-21 10:17:47 | DEBUG    | mcp.server.fastmcp.resources.resource_manager:add_resource:41 - Adding resource
+2025-11-21 10:17:47 | INFO     | YA_MCPServer_Resources:register_resources:88 - Registered 2 resources to MCP
+2025-11-21 10:17:47 | INFO     | YA_MCPServer_DeepReport:start:125 - Starting MCP server: YA_MCPServer_DeepReport
+2025-11-21 10:17:47 | INFO     | YA_MCPServer_DeepReport:run_sse:77 - Running MCP server via SSE: YA_MCPServer_DeepReport (127.0.0.1:12345)
+2025-11-21 10:17:47 | DEBUG    | mcp.server.sse:__init__:119 - SseServerTransport initialized with endpoint: /messages/
+2025-11-21 10:17:47 | DEBUG    | asyncio:__init__:54 - Using selector: KqueueSelector
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:connect_sse:134 - Setting up SSE connection
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:connect_sse:146 - Created new session with ID: 98a5466c-a781-4141-9ee9-530bc933513e
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:connect_sse:195 - Starting SSE response task
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:connect_sse:198 - Yielding read and write streams
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:sse_writer:166 - Starting SSE writer
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:sse_writer:169 - Sent endpoint event: /messages/?session_id=98a5466ca78141419ee9530bc933513e
+2025-11-21 10:18:09 | DEBUG    | sse_starlette.sse:_stream_response:179 - chunk: b'event: endpoint\r\ndata: /messages/?session_id=98a5466ca78141419ee9530bc933513e\r\n\r\n'
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:handle_post_message:202 - Handling POST message
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:handle_post_message:218 - Parsed session ID: 98a5466c-a781-4141-9ee9-530bc933513e
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:handle_post_message:231 - Received JSON: b'{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{"sampling":{},"elicitation":{},"roots":{"listChanged":true}},"clientInfo":{"name":"inspector-client","version":"0.17.2"}}}'
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:handle_post_message:235 - Validated client message: root=JSONRPCRequest(method='initialize', params={'protocolVersion': '2025-06-18', 'capabilities': {'sampling': {}, 'elicitation': {}, 'roots': {'listChanged': True}}, 'clientInfo': {'name': 'inspector-client', 'version': '0.17.2'}}, jsonrpc='2.0', id=0)
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:handle_post_message:246 - Sending session message to writer: SessionMessage(message=JSONRPCMessage(root=JSONRPCRequest(method='initialize', params={'protocolVersion': '2025-06-18', 'capabilities': {'sampling': {}, 'elicitation': {}, 'roots': {'listChanged': True}}, 'clientInfo': {'name': 'inspector-client', 'version': '0.17.2'}}, jsonrpc='2.0', id=0)), metadata=ServerMessageMetadata(related_request_id=None, request_context=<starlette.requests.Request object at 0x10f502c20>))
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:sse_writer:172 - Sending message via SSE: SessionMessage(message=JSONRPCMessage(root=JSONRPCResponse(jsonrpc='2.0', id=0, result={'protocolVersion': '2025-06-18', 'capabilities': {'experimental': {}, 'prompts': {'listChanged': False}, 'resources': {'subscribe': False, 'listChanged': False}, 'tools': {'listChanged': False}}, 'serverInfo': {'name': 'YA_MCPServer_DeepReport', 'version': '1.22.0'}})), metadata=None)
+2025-11-21 10:18:09 | DEBUG    | sse_starlette.sse:_stream_response:179 - chunk: b'event: message\r\ndata: {"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"2025-06-18","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":false}},"serverInfo":{"name":"YA_MCPServer_DeepReport","version":"1.22.0"}}}\r\n\r\n'
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:handle_post_message:202 - Handling POST message
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:handle_post_message:218 - Parsed session ID: 98a5466c-a781-4141-9ee9-530bc933513e
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:handle_post_message:231 - Received JSON: b'{"jsonrpc":"2.0","method":"notifications/initialized"}'
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:handle_post_message:235 - Validated client message: root=JSONRPCNotification(method='notifications/initialized', params=None, jsonrpc='2.0')
+2025-11-21 10:18:09 | DEBUG    | mcp.server.sse:handle_post_message:246 - Sending session message to writer: SessionMessage(message=JSONRPCMessage(root=JSONRPCNotification(method='notifications/initialized', params=None, jsonrpc='2.0')), metadata=ServerMessageMetadata(related_request_id=None, request_context=<starlette.requests.Request object at 0x10f503370>))
+2025-11-21 10:18:09 | DEBUG    | mcp.server.lowlevel.server:run:629 - Received message: root=InitializedNotification(method='notifications/initialized', params=None, jsonrpc='2.0')
+2025-11-21 10:18:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:18:24.586792+00:00\r\n\r\n'
+2025-11-21 10:18:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:18:39.588061+00:00\r\n\r\n'
+2025-11-21 10:18:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:18:54.590250+00:00\r\n\r\n'
+2025-11-21 10:19:02 | DEBUG    | mcp.server.sse:handle_post_message:202 - Handling POST message
+2025-11-21 10:19:02 | DEBUG    | mcp.server.sse:handle_post_message:218 - Parsed session ID: 98a5466c-a781-4141-9ee9-530bc933513e
+2025-11-21 10:19:02 | DEBUG    | mcp.server.sse:handle_post_message:231 - Received JSON: b'{"jsonrpc":"2.0","id":1,"method":"resources/templates/list","params":{"_meta":{"progressToken":1}}}'
+2025-11-21 10:19:02 | DEBUG    | mcp.server.sse:handle_post_message:235 - Validated client message: root=JSONRPCRequest(method='resources/templates/list', params={'_meta': {'progressToken': 1}}, jsonrpc='2.0', id=1)
+2025-11-21 10:19:02 | DEBUG    | mcp.server.sse:handle_post_message:246 - Sending session message to writer: SessionMessage(message=JSONRPCMessage(root=JSONRPCRequest(method='resources/templates/list', params={'_meta': {'progressToken': 1}}, jsonrpc='2.0', id=1)), metadata=ServerMessageMetadata(related_request_id=None, request_context=<starlette.requests.Request object at 0x10f503b20>))
+2025-11-21 10:19:02 | DEBUG    | mcp.server.lowlevel.server:run:629 - Received message: <mcp.shared.session.RequestResponder object at 0x10f503730>
+2025-11-21 10:19:02 | INFO     | mcp.server.lowlevel.server:_handle_request:674 - Processing request of type ListResourceTemplatesRequest
+2025-11-21 10:19:02 | DEBUG    | mcp.server.lowlevel.server:_handle_request:676 - Dispatching request of type ListResourceTemplatesRequest
+2025-11-21 10:19:02 | DEBUG    | mcp.server.fastmcp.resources.resource_manager:list_templates:112 - Listing templates
+2025-11-21 10:19:02 | DEBUG    | mcp.server.lowlevel.server:_handle_request:725 - Response sent
+2025-11-21 10:19:02 | DEBUG    | mcp.server.sse:sse_writer:172 - Sending message via SSE: SessionMessage(message=JSONRPCMessage(root=JSONRPCResponse(jsonrpc='2.0', id=1, result={'resourceTemplates': [{'name': 'server_files', 'title': 'Server Files', 'uriTemplate': 'file:///{path}', 'description': '返回文件内容', 'mimeType': 'text/plain'}]})), metadata=None)
+2025-11-21 10:19:02 | DEBUG    | sse_starlette.sse:_stream_response:179 - chunk: b'event: message\r\ndata: {"jsonrpc":"2.0","id":1,"result":{"resourceTemplates":[{"name":"server_files","title":"Server Files","uriTemplate":"file:///{path}","description":"\xe8\xbf\x94\xe5\x9b\x9e\xe6\x96\x87\xe4\xbb\xb6\xe5\x86\x85\xe5\xae\xb9","mimeType":"text/plain"}]}}\r\n\r\n'
+2025-11-21 10:19:05 | DEBUG    | mcp.server.sse:handle_post_message:202 - Handling POST message
+2025-11-21 10:19:05 | DEBUG    | mcp.server.sse:handle_post_message:218 - Parsed session ID: 98a5466c-a781-4141-9ee9-530bc933513e
+2025-11-21 10:19:05 | DEBUG    | mcp.server.sse:handle_post_message:231 - Received JSON: b'{"jsonrpc":"2.0","id":2,"method":"prompts/list","params":{"_meta":{"progressToken":2}}}'
+2025-11-21 10:19:05 | DEBUG    | mcp.server.sse:handle_post_message:235 - Validated client message: root=JSONRPCRequest(method='prompts/list', params={'_meta': {'progressToken': 2}}, jsonrpc='2.0', id=2)
+2025-11-21 10:19:05 | DEBUG    | mcp.server.sse:handle_post_message:246 - Sending session message to writer: SessionMessage(message=JSONRPCMessage(root=JSONRPCRequest(method='prompts/list', params={'_meta': {'progressToken': 2}}, jsonrpc='2.0', id=2)), metadata=ServerMessageMetadata(related_request_id=None, request_context=<starlette.requests.Request object at 0x10f501360>))
+2025-11-21 10:19:05 | DEBUG    | mcp.server.lowlevel.server:run:629 - Received message: <mcp.shared.session.RequestResponder object at 0x10f503ee0>
+2025-11-21 10:19:05 | INFO     | mcp.server.lowlevel.server:_handle_request:674 - Processing request of type ListPromptsRequest
+2025-11-21 10:19:05 | DEBUG    | mcp.server.lowlevel.server:_handle_request:676 - Dispatching request of type ListPromptsRequest
+2025-11-21 10:19:05 | DEBUG    | mcp.server.lowlevel.server:_handle_request:725 - Response sent
+2025-11-21 10:19:05 | DEBUG    | mcp.server.sse:sse_writer:172 - Sending message via SSE: SessionMessage(message=JSONRPCMessage(root=JSONRPCResponse(jsonrpc='2.0', id=2, result={'prompts': [{'name': 'greet_user', 'title': 'Greeting Prompt', 'description': '生成一个问候消息', 'arguments': [{'name': 'name', 'required': True}]}]})), metadata=None)
+2025-11-21 10:19:05 | DEBUG    | sse_starlette.sse:_stream_response:179 - chunk: b'event: message\r\ndata: {"jsonrpc":"2.0","id":2,"result":{"prompts":[{"name":"greet_user","title":"Greeting Prompt","description":"\xe7\x94\x9f\xe6\x88\x90\xe4\xb8\x80\xe4\xb8\xaa\xe9\x97\xae\xe5\x80\x99\xe6\xb6\x88\xe6\x81\xaf","arguments":[{"name":"name","required":true}]}]}}\r\n\r\n'
+2025-11-21 10:19:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:19:09.591517+00:00\r\n\r\n'
+2025-11-21 10:19:11 | DEBUG    | mcp.server.sse:handle_post_message:202 - Handling POST message
+2025-11-21 10:19:11 | DEBUG    | mcp.server.sse:handle_post_message:218 - Parsed session ID: 98a5466c-a781-4141-9ee9-530bc933513e
+2025-11-21 10:19:11 | DEBUG    | mcp.server.sse:handle_post_message:231 - Received JSON: b'{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{"_meta":{"progressToken":3}}}'
+2025-11-21 10:19:11 | DEBUG    | mcp.server.sse:handle_post_message:235 - Validated client message: root=JSONRPCRequest(method='tools/list', params={'_meta': {'progressToken': 3}}, jsonrpc='2.0', id=3)
+2025-11-21 10:19:11 | DEBUG    | mcp.server.sse:handle_post_message:246 - Sending session message to writer: SessionMessage(message=JSONRPCMessage(root=JSONRPCRequest(method='tools/list', params={'_meta': {'progressToken': 3}}, jsonrpc='2.0', id=3)), metadata=ServerMessageMetadata(related_request_id=None, request_context=<starlette.requests.Request object at 0x10f500a90>))
+2025-11-21 10:19:11 | DEBUG    | mcp.server.lowlevel.server:run:629 - Received message: <mcp.shared.session.RequestResponder object at 0x10f5034f0>
+2025-11-21 10:19:11 | INFO     | mcp.server.lowlevel.server:_handle_request:674 - Processing request of type ListToolsRequest
+2025-11-21 10:19:11 | DEBUG    | mcp.server.lowlevel.server:_handle_request:676 - Dispatching request of type ListToolsRequest
+2025-11-21 10:19:11 | DEBUG    | mcp.server.lowlevel.server:_handle_request:725 - Response sent
+2025-11-21 10:19:11 | DEBUG    | mcp.server.sse:sse_writer:172 - Sending message via SSE: SessionMessage(message=JSONRPCMessage(root=JSONRPCResponse(jsonrpc='2.0', id=3, result={'tools': [{'name': 'get_server_config', 'title': 'Get Server Config', 'description': '获取服务器的配置信息', 'inputSchema': {'properties': {'key': {'title': 'Key', 'type': 'string'}, 'default': {'default': None, 'title': 'Default'}}, 'required': ['key'], 'title': 'get_server_configArguments', 'type': 'object'}, 'outputSchema': {'properties': {'result': {'additionalProperties': True, 'title': 'Result', 'type': 'object'}}, 'required': ['result'], 'title': 'get_server_configOutput', 'type': 'object'}}, {'name': 'greeting_tool', 'title': 'Greeting Tool', 'description': 'A simple tool that returns a greeting message.', 'inputSchema': {'properties': {'name': {'title': 'Name', 'type': 'string'}}, 'required': ['name'], 'title': 'greeting_toolArguments', 'type': 'object'}, 'outputSchema': {'properties': {'result': {'additionalProperties': {'type': 'string'}, 'title': 'Result', 'type': 'object'}}, 'required': ['result'], 'title': 'greeting_toolOutput', 'type': 'object'}}]})), metadata=None)
+2025-11-21 10:19:11 | DEBUG    | sse_starlette.sse:_stream_response:179 - chunk: b'event: message\r\ndata: {"jsonrpc":"2.0","id":3,"result":{"tools":[{"name":"get_server_config","title":"Get Server Config","description":"\xe8\x8e\xb7\xe5\x8f\x96\xe6\x9c\x8d\xe5\x8a\xa1\xe5\x99\xa8\xe7\x9a\x84\xe9\x85\x8d\xe7\xbd\xae\xe4\xbf\xa1\xe6\x81\xaf","inputSchema":{"properties":{"key":{"title":"Key","type":"string"},"default":{"default":null,"title":"Default"}},"required":["key"],"title":"get_server_configArguments","type":"object"},"outputSchema":{"properties":{"result":{"additionalProperties":true,"title":"Result","type":"object"}},"required":["result"],"title":"get_server_configOutput","type":"object"}},{"name":"greeting_tool","title":"Greeting Tool","description":"A simple tool that returns a greeting message.","inputSchema":{"properties":{"name":{"title":"Name","type":"string"}},"required":["name"],"title":"greeting_toolArguments","type":"object"},"outputSchema":{"properties":{"result":{"additionalProperties":{"type":"string"},"title":"Result","type":"object"}},"required":["result"],"title":"greeting_toolOutput","type":"object"}}]}}\r\n\r\n'
+2025-11-21 10:19:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:19:24.592707+00:00\r\n\r\n'
+2025-11-21 10:19:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:19:39.593973+00:00\r\n\r\n'
+2025-11-21 10:19:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:19:54.595172+00:00\r\n\r\n'
+2025-11-21 10:20:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:20:09.596462+00:00\r\n\r\n'
+2025-11-21 10:20:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:20:24.597699+00:00\r\n\r\n'
+2025-11-21 10:20:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:20:39.599093+00:00\r\n\r\n'
+2025-11-21 10:20:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:20:54.601331+00:00\r\n\r\n'
+2025-11-21 10:21:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:21:09.603565+00:00\r\n\r\n'
+2025-11-21 10:21:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:21:24.604917+00:00\r\n\r\n'
+2025-11-21 10:21:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:21:39.607202+00:00\r\n\r\n'
+2025-11-21 10:21:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:21:54.610977+00:00\r\n\r\n'
+2025-11-21 10:22:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:22:09.618034+00:00\r\n\r\n'
+2025-11-21 10:22:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:22:24.622901+00:00\r\n\r\n'
+2025-11-21 10:22:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:22:39.672219+00:00\r\n\r\n'
+2025-11-21 10:22:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:22:54.684545+00:00\r\n\r\n'
+2025-11-21 10:23:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:23:09.687896+00:00\r\n\r\n'
+2025-11-21 10:23:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:23:24.696469+00:00\r\n\r\n'
+2025-11-21 10:23:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:23:39.704427+00:00\r\n\r\n'
+2025-11-21 10:23:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:23:54.709410+00:00\r\n\r\n'
+2025-11-21 10:24:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:24:09.718487+00:00\r\n\r\n'
+2025-11-21 10:24:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:24:24.741106+00:00\r\n\r\n'
+2025-11-21 10:24:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:24:39.744003+00:00\r\n\r\n'
+2025-11-21 10:24:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:24:54.745426+00:00\r\n\r\n'
+2025-11-21 10:25:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:25:09.746782+00:00\r\n\r\n'
+2025-11-21 10:25:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:25:24.748894+00:00\r\n\r\n'
+2025-11-21 10:25:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:25:39.750266+00:00\r\n\r\n'
+2025-11-21 10:25:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:25:54.752225+00:00\r\n\r\n'
+2025-11-21 10:26:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:26:09.753500+00:00\r\n\r\n'
+2025-11-21 10:26:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:26:24.754653+00:00\r\n\r\n'
+2025-11-21 10:26:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:26:39.755948+00:00\r\n\r\n'
+2025-11-21 10:26:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:26:54.757389+00:00\r\n\r\n'
+2025-11-21 10:27:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:27:09.759036+00:00\r\n\r\n'
+2025-11-21 10:27:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:27:24.760316+00:00\r\n\r\n'
+2025-11-21 10:27:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:27:39.761676+00:00\r\n\r\n'
+2025-11-21 10:27:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:27:54.764088+00:00\r\n\r\n'
+2025-11-21 10:28:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:28:09.765368+00:00\r\n\r\n'
+2025-11-21 10:28:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:28:24.767876+00:00\r\n\r\n'
+2025-11-21 10:28:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:28:39.769867+00:00\r\n\r\n'
+2025-11-21 10:28:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:28:54.772212+00:00\r\n\r\n'
+2025-11-21 10:29:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:29:09.774984+00:00\r\n\r\n'
+2025-11-21 10:29:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:29:24.781399+00:00\r\n\r\n'
+2025-11-21 10:29:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:29:39.787262+00:00\r\n\r\n'
+2025-11-21 10:29:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:29:54.788639+00:00\r\n\r\n'
+2025-11-21 10:30:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:30:09.789798+00:00\r\n\r\n'
+2025-11-21 10:30:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:30:24.790972+00:00\r\n\r\n'
+2025-11-21 10:30:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:30:39.792355+00:00\r\n\r\n'
+2025-11-21 10:30:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:30:54.793847+00:00\r\n\r\n'
+2025-11-21 10:31:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:31:09.796565+00:00\r\n\r\n'
+2025-11-21 10:31:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:31:24.798990+00:00\r\n\r\n'
+2025-11-21 10:31:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:31:39.800423+00:00\r\n\r\n'
+2025-11-21 10:31:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:31:54.803989+00:00\r\n\r\n'
+2025-11-21 10:32:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:32:09.810281+00:00\r\n\r\n'
+2025-11-21 10:32:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:32:24.817512+00:00\r\n\r\n'
+2025-11-21 10:32:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:32:39.820550+00:00\r\n\r\n'
+2025-11-21 10:32:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:32:54.823276+00:00\r\n\r\n'
+2025-11-21 10:33:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:33:09.826453+00:00\r\n\r\n'
+2025-11-21 10:33:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:33:24.830040+00:00\r\n\r\n'
+2025-11-21 10:33:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:33:39.839267+00:00\r\n\r\n'
+2025-11-21 10:33:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:33:54.857928+00:00\r\n\r\n'
+2025-11-21 10:34:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:34:09.864803+00:00\r\n\r\n'
+2025-11-21 10:34:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:34:24.868044+00:00\r\n\r\n'
+2025-11-21 10:34:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:34:39.870943+00:00\r\n\r\n'
+2025-11-21 10:34:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:34:54.876689+00:00\r\n\r\n'
+2025-11-21 10:35:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:35:09.907804+00:00\r\n\r\n'
+2025-11-21 10:35:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:35:24.915563+00:00\r\n\r\n'
+2025-11-21 10:35:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:35:39.920848+00:00\r\n\r\n'
+2025-11-21 10:35:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:35:54.922257+00:00\r\n\r\n'
+2025-11-21 10:36:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:36:09.924650+00:00\r\n\r\n'
+2025-11-21 10:36:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:36:24.932692+00:00\r\n\r\n'
+2025-11-21 10:36:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:36:39.934827+00:00\r\n\r\n'
+2025-11-21 10:36:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:36:54.935986+00:00\r\n\r\n'
+2025-11-21 10:37:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:37:09.938120+00:00\r\n\r\n'
+2025-11-21 10:37:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:37:24.939831+00:00\r\n\r\n'
+2025-11-21 10:37:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:37:39.941845+00:00\r\n\r\n'
+2025-11-21 10:37:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:37:54.944146+00:00\r\n\r\n'
+2025-11-21 10:38:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:38:09.945797+00:00\r\n\r\n'
+2025-11-21 10:38:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:38:24.947084+00:00\r\n\r\n'
+2025-11-21 10:38:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:38:39.949795+00:00\r\n\r\n'
+2025-11-21 10:38:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:38:54.956802+00:00\r\n\r\n'
+2025-11-21 10:39:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:39:09.965042+00:00\r\n\r\n'
+2025-11-21 10:39:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:39:24.969113+00:00\r\n\r\n'
+2025-11-21 10:39:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:39:39.972214+00:00\r\n\r\n'
+2025-11-21 10:39:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:39:54.979052+00:00\r\n\r\n'
+2025-11-21 10:40:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:40:09.984088+00:00\r\n\r\n'
+2025-11-21 10:40:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:40:24.986498+00:00\r\n\r\n'
+2025-11-21 10:40:39 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:40:39.992755+00:00\r\n\r\n'
+2025-11-21 10:40:54 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:40:54.995996+00:00\r\n\r\n'
+2025-11-21 10:41:09 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:41:09.997696+00:00\r\n\r\n'
+2025-11-21 10:41:24 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:41:24.998858+00:00\r\n\r\n'
+2025-11-21 10:41:40 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:41:40.000175+00:00\r\n\r\n'
+2025-11-21 10:41:55 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:41:55.001295+00:00\r\n\r\n'
+2025-11-21 10:42:10 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:42:10.002433+00:00\r\n\r\n'
+2025-11-21 10:42:25 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:42:25.004506+00:00\r\n\r\n'
+2025-11-21 10:42:40 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:42:40.007069+00:00\r\n\r\n'
+2025-11-21 10:42:55 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:42:55.008371+00:00\r\n\r\n'
+2025-11-21 10:43:10 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:43:10.010860+00:00\r\n\r\n'
+2025-11-21 10:43:25 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:43:25.016948+00:00\r\n\r\n'
+2025-11-21 10:43:40 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:43:40.019762+00:00\r\n\r\n'
+2025-11-21 10:43:55 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:43:55.023186+00:00\r\n\r\n'
+2025-11-21 10:44:10 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:44:10.025701+00:00\r\n\r\n'
+2025-11-21 10:44:25 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:44:25.027581+00:00\r\n\r\n'
+2025-11-21 10:44:40 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:44:40.029738+00:00\r\n\r\n'
+2025-11-21 10:44:55 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:44:55.032424+00:00\r\n\r\n'
+2025-11-21 10:45:10 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:45:10.035962+00:00\r\n\r\n'
+2025-11-21 10:45:25 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:45:25.040772+00:00\r\n\r\n'
+2025-11-21 10:45:40 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:45:40.046637+00:00\r\n\r\n'
+2025-11-21 10:45:55 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:45:55.049503+00:00\r\n\r\n'
+2025-11-21 10:46:10 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:46:10.051669+00:00\r\n\r\n'
+2025-11-21 10:46:25 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:46:25.092115+00:00\r\n\r\n'
+2025-11-21 10:46:40 | DEBUG    | sse_starlette.sse:_ping:236 - ping: b': ping - 2025-11-21 02:46:40.094773+00:00\r\n\r\n'
+2025-11-21 10:46:50 | DEBUG    | sse_starlette.sse:_listen_for_disconnect:200 - Got event: http.disconnect. Stop streaming.
+2025-11-21 10:46:50 | DEBUG    | root:response_wrapper:193 - Client session disconnected 98a5466c-a781-4141-9ee9-530bc933513e

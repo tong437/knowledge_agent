@@ -1,0 +1,10 @@
+2025-11-21 10:06:48 | DEBUG    | mcp.server.lowlevel.server:__init__:157 - Initializing server 'YA_MCPServer_DeepReport'
+2025-11-21 10:06:48 | DEBUG    | mcp.server.lowlevel.server:decorator:414 - Registering handler for ListToolsRequest
+2025-11-21 10:06:48 | DEBUG    | mcp.server.lowlevel.server:decorator:486 - Registering handler for CallToolRequest
+2025-11-21 10:06:48 | DEBUG    | mcp.server.lowlevel.server:decorator:281 - Registering handler for ListResourcesRequest
+2025-11-21 10:06:48 | DEBUG    | mcp.server.lowlevel.server:decorator:316 - Registering handler for ReadResourceRequest
+2025-11-21 10:06:48 | DEBUG    | mcp.server.lowlevel.server:decorator:243 - Registering handler for PromptListRequest
+2025-11-21 10:06:48 | DEBUG    | mcp.server.lowlevel.server:decorator:265 - Registering handler for GetPromptRequest
+2025-11-21 10:06:48 | DEBUG    | mcp.server.lowlevel.server:decorator:301 - Registering handler for ListResourceTemplatesRequest
+2025-11-21 10:06:48 | INFO     | YA_MCPServer_Tools:register_tools:82 - Registered 2 tools to MCP
+2025-11-21 10:06:48 | INFO     | YA_MCPServer_Prompts:register_prompts:74 - Registered 1 prompts to MCP

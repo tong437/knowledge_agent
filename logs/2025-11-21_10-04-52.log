@@ -1,0 +1,25 @@
+2025-11-21 10:04:52 | DEBUG    | mcp.server.lowlevel.server:__init__:157 - Initializing server 'YA_MCPServer_DeepReport'
+2025-11-21 10:04:52 | DEBUG    | mcp.server.lowlevel.server:decorator:414 - Registering handler for ListToolsRequest
+2025-11-21 10:04:52 | DEBUG    | mcp.server.lowlevel.server:decorator:486 - Registering handler for CallToolRequest
+2025-11-21 10:04:52 | DEBUG    | mcp.server.lowlevel.server:decorator:281 - Registering handler for ListResourcesRequest
+2025-11-21 10:04:52 | DEBUG    | mcp.server.lowlevel.server:decorator:316 - Registering handler for ReadResourceRequest
+2025-11-21 10:04:52 | DEBUG    | mcp.server.lowlevel.server:decorator:243 - Registering handler for PromptListRequest
+2025-11-21 10:04:52 | DEBUG    | mcp.server.lowlevel.server:decorator:265 - Registering handler for GetPromptRequest
+2025-11-21 10:04:52 | DEBUG    | mcp.server.lowlevel.server:decorator:301 - Registering handler for ListResourceTemplatesRequest
+2025-11-21 10:04:52 | INFO     | YA_MCPServer_Tools:register_tools:82 - Registered 2 tools to MCP
+2025-11-21 10:04:52 | INFO     | YA_MCPServer_Prompts:register_prompts:74 - Registered 1 prompts to MCP
+2025-11-21 10:04:52 | DEBUG    | mcp.server.fastmcp.resources.resource_manager:add_resource:41 - Adding resource
+2025-11-21 10:04:52 | INFO     | YA_MCPServer_Resources:register_resources:88 - Registered 2 resources to MCP
+2025-11-21 10:04:52 | INFO     | YA_MCPServer_DeepReport:start:125 - Starting MCP server: YA_MCPServer_DeepReport
+2025-11-21 10:04:52 | INFO     | YA_MCPServer_DeepReport:run_sse:77 - Running MCP server via SSE: YA_MCPServer_DeepReport (127.0.0.1:12345)
+2025-11-21 10:04:52 | DEBUG    | mcp.server.sse:__init__:119 - SseServerTransport initialized with endpoint: /messages/
+2025-11-21 10:04:52 | DEBUG    | asyncio:__init__:54 - Using selector: KqueueSelector
+2025-11-21 10:05:02 | DEBUG    | mcp.server.sse:connect_sse:134 - Setting up SSE connection
+2025-11-21 10:05:02 | DEBUG    | mcp.server.sse:connect_sse:146 - Created new session with ID: 06f35da9-9eb3-41e9-b85a-b9369e29b54f
+2025-11-21 10:05:02 | DEBUG    | mcp.server.sse:connect_sse:195 - Starting SSE response task
+2025-11-21 10:05:02 | DEBUG    | mcp.server.sse:connect_sse:198 - Yielding read and write streams
+2025-11-21 10:05:02 | DEBUG    | mcp.server.sse:sse_writer:166 - Starting SSE writer
+2025-11-21 10:05:02 | DEBUG    | mcp.server.sse:sse_writer:169 - Sent endpoint event: /messages/?session_id=06f35da99eb341e9b85ab9369e29b54f
+2025-11-21 10:05:02 | DEBUG    | sse_starlette.sse:_stream_response:179 - chunk: b'event: endpoint\r\ndata: /messages/?session_id=06f35da99eb341e9b85ab9369e29b54f\r\n\r\n'
+2025-11-21 10:05:06 | DEBUG    | sse_starlette.sse:_listen_for_disconnect:200 - Got event: http.disconnect. Stop streaming.
+2025-11-21 10:05:06 | DEBUG    | root:response_wrapper:193 - Client session disconnected 06f35da9-9eb3-41e9-b85a-b9369e29b54f
