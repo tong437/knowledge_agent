@@ -179,12 +179,24 @@ class KnowledgeAgentCore:
             
         Returns:
             KnowledgeItem if found, None otherwise
+            
+        Raises:
+            KnowledgeAgentError: If retrieval fails
         """
         try:
             self.logger.info(f"Retrieving knowledge item: {item_id}")
             
-            # This will be implemented in task 2
-            raise NotImplementedError("Knowledge item retrieval will be implemented in task 2")
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+            
+            item = self._storage_manager.get_knowledge_item(item_id)
+            
+            if item:
+                self.logger.info(f"Successfully retrieved knowledge item: {item_id}")
+            else:
+                self.logger.info(f"Knowledge item not found: {item_id}")
+            
+            return item
             
         except Exception as e:
             self.logger.error(f"Error retrieving knowledge item: {e}")
@@ -195,16 +207,51 @@ class KnowledgeAgentCore:
         List knowledge items with optional filtering.
         
         Args:
-            **filters: Filter criteria
+            **filters: Filter criteria (category, tag, limit, offset)
             
         Returns:
             List of knowledge items
+            
+        Raises:
+            KnowledgeAgentError: If listing fails
         """
         try:
             self.logger.info("Listing knowledge items")
             
-            # This will be implemented in task 2
-            raise NotImplementedError("Knowledge item listing will be implemented in task 2")
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+            
+            # Get all items
+            all_items = self._storage_manager.get_all_knowledge_items()
+            
+            # Apply filters
+            filtered_items = all_items
+            
+            # Filter by category
+            if "category" in filters and filters["category"]:
+                category_name = filters["category"]
+                filtered_items = [
+                    item for item in filtered_items
+                    if any(cat.name == category_name for cat in item.categories)
+                ]
+            
+            # Filter by tag
+            if "tag" in filters and filters["tag"]:
+                tag_name = filters["tag"]
+                filtered_items = [
+                    item for item in filtered_items
+                    if any(tag.name == tag_name for tag in item.tags)
+                ]
+            
+            # Apply pagination
+            offset = filters.get("offset", 0)
+            limit = filters.get("limit", 50)
+            
+            paginated_items = filtered_items[offset:offset + limit]
+            
+            self.logger.info(f"Retrieved {len(paginated_items)} knowledge items (total: {len(filtered_items)})")
+            
+            return paginated_items
             
         except Exception as e:
             self.logger.error(f"Error listing knowledge items: {e}")
@@ -215,16 +262,29 @@ class KnowledgeAgentCore:
         Export all knowledge data.
         
         Args:
-            format: Export format
+            format: Export format (currently only 'json' is supported)
             
         Returns:
-            Exported data
+            Exported data dictionary
+            
+        Raises:
+            KnowledgeAgentError: If export fails
         """
         try:
             self.logger.info(f"Exporting data in {format} format")
             
-            # This will be implemented in task 9
-            raise NotImplementedError("Data export will be implemented in task 9")
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+            
+            if format.lower() != "json":
+                raise KnowledgeAgentError(f"Unsupported export format: {format}")
+            
+            # Export data from storage
+            export_data = self._storage_manager.export_data(format=format)
+            
+            self.logger.info(f"Successfully exported {len(export_data.get('knowledge_items', []))} items")
+            
+            return export_data
             
         except Exception as e:
             self.logger.error(f"Error exporting data: {e}")
@@ -235,16 +295,34 @@ class KnowledgeAgentCore:
         Import knowledge data.
         
         Args:
-            data: Data to import
+            data: Data dictionary to import (must contain knowledge_items, categories, tags, relationships)
             
         Returns:
-            True if successful
+            True if successful, False otherwise
+            
+        Raises:
+            KnowledgeAgentError: If import fails
         """
         try:
             self.logger.info("Importing knowledge data")
             
-            # This will be implemented in task 9
-            raise NotImplementedError("Data import will be implemented in task 9")
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+            
+            # Validate data structure
+            if not isinstance(data, dict):
+                raise KnowledgeAgentError("Import data must be a dictionary")
+            
+            # Import data to storage
+            success = self._storage_manager.import_data(data)
+            
+            if success:
+                item_count = len(data.get("knowledge_items", []))
+                self.logger.info(f"Successfully imported {item_count} items")
+            else:
+                self.logger.warning("Import completed with warnings or partial success")
+            
+            return success
             
         except Exception as e:
             self.logger.error(f"Error importing data: {e}")
