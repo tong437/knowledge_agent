@@ -1,0 +1,102 @@
+# 知识管理智能体配置文件示例
+# 此文件展示了所有可配置的选项
+
+# 服务器配置
+server:
+  version: "1.0.0"
+
+# 存储配置
+storage:
+  type: sqlite                    # 存储类型: sqlite
+  path: knowledge_agent.db        # 数据库文件路径
+  backup_enabled: true            # 是否启用自动备份
+  backup_interval: 3600           # 备份间隔（秒）
+
+# 搜索参数配置
+search:
+  min_relevance: 0.1              # 最小相关度阈值 (0.0-1.0)
+  max_results: 50                 # 最大返回结果数
+  enable_semantic: true           # 启用语义搜索
+  enable_keyword: true            # 启用关键词搜索
+  result_grouping: true           # 启用结果分组
+  highlight_matches: true         # 启用匹配高亮
+
+# 知识整理配置
+organization:
+  auto_classify: true             # 自动分类
+  auto_tag: true                  # 自动标签
+  auto_relationships: true        # 自动建立关联关系
+  classification_confidence_threshold: 0.7    # 分类置信度阈值
+  relationship_strength_threshold: 0.5        # 关系强度阈值
+  
+  # 自定义分类规则
+  custom_classification_rules:
+    - name: "Python代码"
+      keywords:
+        - python
+        - def
+        - class
+        - import
+      category: "编程"
+      priority: 10
+      enabled: true
+    
+    - name: "机器学习"
+      keywords:
+        - machine learning
+        - neural network
+        - deep learning
+        - model
+        - training
+      category: "人工智能"
+      priority: 9
+      enabled: true
+    
+    - name: "Web开发"
+      keywords:
+        - html
+        - css
+        - javascript
+        - react
+        - vue
+        - django
+        - flask
+      category: "Web开发"
+      priority: 8
+      enabled: true
+    
+    - name: "数据库"
+      keywords:
+        - sql
+        - database
+        - query
+        - table
+        - index
+      category: "数据库"
+      priority: 7
+      enabled: true
+    
+    - name: "DevOps"
+      keywords:
+        - docker
+        - kubernetes
+        - ci/cd
+        - deployment
+        - container
+      category: "DevOps"
+      priority: 6
+      enabled: true
+
+# 数据处理配置
+processing:
+  max_file_size: 10485760         # 最大文件大小（字节，默认10MB）
+  supported_encodings:            # 支持的文件编码
+    - utf-8
+    - utf-16
+    - latin-1
+    - gbk
+  
+  # 网页抓取配置
+  web_scraping:
+    timeout: 30                   # 超时时间（秒）
+    max_retries: 3                # 最大重试次数

@@ -1,0 +1,191 @@
+{
+  "version": "1.0",
+  "export_date": "2024-02-04T00:00:00",
+  "statistics": {
+    "item_count": 5,
+    "category_count": 3,
+    "tag_count": 8,
+    "relationship_count": 3
+  },
+  "items": [
+    {
+      "id": "kb_001",
+      "title": "Python Web开发框架Django",
+      "content": "Django是一个高级Python Web框架，鼓励快速开发和干净、实用的设计。它由经验丰富的开发者构建，解决了Web开发的许多麻烦，因此你可以专注于编写应用程序，而无需重新发明轮子。Django包含ORM、模板引擎、表单处理、用户认证等功能。",
+      "source_type": "document",
+      "source_path": "/docs/django_intro.md",
+      "categories": ["Web开发"],
+      "tags": ["Python", "Django", "Web框架", "后端开发"],
+      "metadata": {
+        "difficulty": "intermediate",
+        "language": "zh-CN",
+        "version": "4.2",
+        "author": "Django团队"
+      },
+      "created_at": "2024-02-01T10:00:00",
+      "updated_at": "2024-02-04T15:30:00"
+    },
+    {
+      "id": "kb_002",
+      "title": "深度学习框架PyTorch",
+      "content": "PyTorch是一个开源的机器学习库，基于Torch库开发。它主要用于计算机视觉和自然语言处理等应用。PyTorch提供了两个高级功能：强大的GPU加速张量计算和基于tape的自动微分系统。它的动态计算图特性使得调试更加容易。",
+      "source_type": "document",
+      "source_path": "/docs/pytorch_guide.md",
+      "categories": ["人工智能"],
+      "tags": ["Python", "PyTorch", "深度学习", "机器学习"],
+      "metadata": {
+        "difficulty": "advanced",
+        "language": "zh-CN",
+        "version": "2.0",
+        "use_case": "深度学习研究和生产"
+      },
+      "created_at": "2024-02-02T09:00:00",
+      "updated_at": "2024-02-04T14:20:00"
+    },
+    {
+      "id": "kb_003",
+      "title": "RESTful API设计最佳实践",
+      "content": "RESTful API是一种软件架构风格，用于设计网络应用程序。它使用HTTP请求来访问和使用数据。最佳实践包括：使用名词而非动词、使用复数形式、使用HTTP方法（GET、POST、PUT、DELETE）、提供过滤和排序、版本控制、使用HTTPS、提供清晰的错误消息等。",
+      "source_type": "document",
+      "source_path": "/docs/restful_api_best_practices.md",
+      "categories": ["Web开发"],
+      "tags": ["API", "REST", "Web服务", "后端开发"],
+      "metadata": {
+        "difficulty": "intermediate",
+        "language": "zh-CN",
+        "topics": ["API设计", "HTTP", "架构"]
+      },
+      "created_at": "2024-02-03T11:00:00",
+      "updated_at": "2024-02-04T16:00:00"
+    },
+    {
+      "id": "kb_004",
+      "title": "Docker容器化技术",
+      "content": "Docker是一个开源的应用容器引擎，让开发者可以打包他们的应用以及依赖包到一个可移植的容器中。容器是完全使用沙箱机制，相互之间不会有任何接口。Docker的优势包括：快速部署、环境一致性、资源隔离、版本控制、可移植性等。常用命令包括docker build、docker run、docker ps等。",
+      "source_type": "document",
+      "source_path": "/docs/docker_basics.md",
+      "categories": ["DevOps"],
+      "tags": ["Docker", "容器", "DevOps", "部署"],
+      "metadata": {
+        "difficulty": "intermediate",
+        "language": "zh-CN",
+        "version": "24.0",
+        "platform": "跨平台"
+      },
+      "created_at": "2024-02-03T14:00:00",
+      "updated_at": "2024-02-04T13:45:00"
+    },
+    {
+      "id": "kb_005",
+      "title": "Git版本控制系统",
+      "content": "Git是一个分布式版本控制系统，用于跟踪计算机文件的变化和协调多人协作。Git的核心概念包括：仓库（repository）、提交（commit）、分支（branch）、合并（merge）、远程仓库（remote）等。常用命令：git init、git add、git commit、git push、git pull、git branch、git merge等。",
+      "source_type": "document",
+      "source_path": "/docs/git_tutorial.md",
+      "categories": ["DevOps"],
+      "tags": ["Git", "版本控制", "协作", "开发工具"],
+      "metadata": {
+        "difficulty": "beginner",
+        "language": "zh-CN",
+        "essential": true
+      },
+      "created_at": "2024-02-01T08:00:00",
+      "updated_at": "2024-02-04T12:00:00"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat_web",
+      "name": "Web开发",
+      "description": "Web应用程序开发相关的知识和技术",
+      "parent_id": null,
+      "confidence": 0.95
+    },
+    {
+      "id": "cat_ai",
+      "name": "人工智能",
+      "description": "机器学习、深度学习和AI相关技术",
+      "parent_id": null,
+      "confidence": 0.92
+    },
+    {
+      "id": "cat_devops",
+      "name": "DevOps",
+      "description": "开发运维、部署和基础设施相关技术",
+      "parent_id": null,
+      "confidence": 0.90
+    }
+  ],
+  "tags": [
+    {
+      "id": "tag_python",
+      "name": "Python",
+      "color": "#3776AB",
+      "usage_count": 25
+    },
+    {
+      "id": "tag_django",
+      "name": "Django",
+      "color": "#092E20",
+      "usage_count": 8
+    },
+    {
+      "id": "tag_pytorch",
+      "name": "PyTorch",
+      "color": "#EE4C2C",
+      "usage_count": 12
+    },
+    {
+      "id": "tag_api",
+      "name": "API",
+      "color": "#FF6B6B",
+      "usage_count": 15
+    },
+    {
+      "id": "tag_docker",
+      "name": "Docker",
+      "color": "#2496ED",
+      "usage_count": 18
+    },
+    {
+      "id": "tag_git",
+      "name": "Git",
+      "color": "#F05032",
+      "usage_count": 30
+    },
+    {
+      "id": "tag_backend",
+      "name": "后端开发",
+      "color": "#4CAF50",
+      "usage_count": 20
+    },
+    {
+      "id": "tag_ml",
+      "name": "机器学习",
+      "color": "#9C27B0",
+      "usage_count": 22
+    }
+  ],
+  "relationships": [
+    {
+      "source_id": "kb_001",
+      "target_id": "kb_003",
+      "relationship_type": "related",
+      "strength": 0.85,
+      "description": "Django开发需要了解RESTful API设计"
+    },
+    {
+      "source_id": "kb_004",
+      "target_id": "kb_001",
+      "relationship_type": "supports",
+      "strength": 0.80,
+      "description": "Docker可用于部署Django应用"
+    },
+    {
+      "source_id": "kb_005",
+      "target_id": "kb_004",
+      "relationship_type": "prerequisite",
+      "strength": 0.75,
+      "description": "使用Docker前建议先掌握Git版本控制"
+    }
+  ]
+}
