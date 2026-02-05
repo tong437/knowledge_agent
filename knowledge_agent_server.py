@@ -13,17 +13,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from knowledge_agent.server import KnowledgeMCPServer
-
-
-def setup_logging():
-    """Setup logging configuration."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(sys.stderr),
-        ]
-    )
+from knowledge_agent.core.logging_config import setup_logging, log_system_info
 
 
 def parse_arguments():
@@ -58,16 +48,38 @@ def parse_arguments():
         help="Server name (default: personal-knowledge-agent)"
     )
     
+    parser.add_argument(
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        default="INFO",
+        help="Logging level (default: INFO)"
+    )
+    
+    parser.add_argument(
+        "--log-file",
+        help="Log file path (optional)"
+    )
+    
     return parser.parse_args()
 
 
 def main():
     """Main entry point for the knowledge agent server."""
-    setup_logging()
     args = parse_arguments()
     
+    # Setup logging with configured level
+    log_level = getattr(logging, args.log_level)
+    setup_logging(level=log_level, log_file=args.log_file, structured=True)
+    
     logger = logging.getLogger("knowledge_agent.main")
+    logger.info("=" * 60)
     logger.info("Starting Personal Knowledge Management Agent MCP Server")
+    logger.info("=" * 60)
+    
+    # Log system information
+    log_system_info()
+    
+    server = None
     
     try:
         # Create the MCP server
@@ -90,12 +102,32 @@ def main():
             server.start_sse(args.host, args.port)
         
     except KeyboardInterrupt:
-        logger.info("Server interrupted by user")
+        logger.info("\n" + "=" * 60)
+        logger.info("Server interrupted by user (Ctrl+C)")
+        logger.info("=" * 60)
     except Exception as e:
-        logger.error(f"Server error: {e}")
+        logger.error("=" * 60)
+        logger.error(f"Server error: {e}", exc_info=True)
+        logger.error("=" * 60)
+        if server:
+            server.shutdown()
         sys.exit(1)
     finally:
-        logger.info("Server shutdown complete")
+        # Ensure cleanup happens
+        if server and server.is_running():
+            logger.info("Performing final cleanup...")
+            server.shutdown()
+        
+        # Log final monitoring report
+        if server and hasattr(server, 'knowledge_core'):
+            try:
+                server.knowledge_core.log_monitoring_report()
+            except Exception as e:
+                logger.error(f"Failed to log monitoring report: {e}")
+        
+        logger.info("=" * 60)
+        logger.info("Server shutdown complete - Goodbye!")
+        logger.info("=" * 60)
 
 
 if __name__ == "__main__":

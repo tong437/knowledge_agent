@@ -28,26 +28,56 @@ class KnowledgeMCPServer:
         self.server_name = server_name
         self.logger = logging.getLogger(f"knowledge_agent.{server_name}")
         
-        # Initialize the FastMCP app
-        self.app = FastMCP(server_name)
+        # Server state
+        self._initialized = False
+        self._running = False
         
-        # Initialize the knowledge agent core
-        self.knowledge_core = KnowledgeAgentCore()
-        
-        # Register MCP tools and resources
-        self._register_components()
-        
-        self.logger.info(f"Knowledge MCP server initialized: {server_name}")
+        try:
+            self.logger.info("=" * 60)
+            self.logger.info(f"Initializing Knowledge MCP Server: {server_name}")
+            self.logger.info("=" * 60)
+            
+            # Initialize the FastMCP app
+            self.app = FastMCP(server_name)
+            self.logger.info("✓ FastMCP application created")
+            
+            # Initialize the knowledge agent core
+            self.knowledge_core = KnowledgeAgentCore()
+            self.logger.info("✓ Knowledge agent core initialized")
+            
+            # Register MCP tools and resources
+            self._register_components()
+            
+            self._initialized = True
+            self.logger.info("=" * 60)
+            self.logger.info(f"Knowledge MCP server initialized successfully")
+            self.logger.info("=" * 60)
+            
+        except Exception as e:
+            self.logger.error(f"Failed to initialize MCP server: {e}")
+            # Cleanup on initialization failure
+            if hasattr(self, 'knowledge_core'):
+                self.knowledge_core.shutdown()
+            raise
     
     def _register_components(self) -> None:
         """Register MCP tools and resources with the server."""
-        # Register knowledge management tools
-        register_knowledge_tools(self.app, self.knowledge_core)
-        
-        # Register knowledge resources
-        register_knowledge_resources(self.app, self.knowledge_core)
-        
-        self.logger.info("MCP components registered successfully")
+        try:
+            self.logger.info("Registering MCP components...")
+            
+            # Register knowledge management tools
+            register_knowledge_tools(self.app, self.knowledge_core)
+            self.logger.info("✓ Knowledge tools registered")
+            
+            # Register knowledge resources
+            register_knowledge_resources(self.app, self.knowledge_core)
+            self.logger.info("✓ Knowledge resources registered")
+            
+            self.logger.info("MCP components registered successfully")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to register MCP components: {e}")
+            raise
     
     def get_server_info(self) -> Dict[str, Any]:
         """
@@ -78,8 +108,25 @@ class KnowledgeMCPServer:
     
     def start_stdio(self) -> None:
         """Start the server using stdio transport."""
-        self.logger.info(f"Starting {self.server_name} via stdio")
-        self.app.run(transport="stdio")
+        if not self._initialized:
+            raise RuntimeError("Server not initialized")
+        
+        self.logger.info("=" * 60)
+        self.logger.info(f"Starting {self.server_name} via stdio transport")
+        self.logger.info("=" * 60)
+        
+        self._running = True
+        
+        try:
+            self.app.run(transport="stdio")
+        except KeyboardInterrupt:
+            self.logger.info("Server interrupted by user")
+        except Exception as e:
+            self.logger.error(f"Server error: {e}")
+            raise
+        finally:
+            self._running = False
+            self.shutdown()
     
     def start_sse(self, host: str = "localhost", port: int = 8000, mount_path: str = "/sse") -> None:
         """
@@ -96,10 +143,27 @@ class KnowledgeMCPServer:
             port: Port preference (informational only) 
             mount_path: SSE endpoint path (default: /sse)
         """
-        self.logger.info(f"Starting {self.server_name} via SSE")
+        if not self._initialized:
+            raise RuntimeError("Server not initialized")
+        
+        self.logger.info("=" * 60)
+        self.logger.info(f"Starting {self.server_name} via SSE transport")
         self.logger.info(f"SSE endpoint will be available at: {mount_path}")
         self.logger.info(f"Note: Host/port are managed by FastMCP internally")
-        self.app.run(transport="sse", mount_path=mount_path)
+        self.logger.info("=" * 60)
+        
+        self._running = True
+        
+        try:
+            self.app.run(transport="sse", mount_path=mount_path)
+        except KeyboardInterrupt:
+            self.logger.info("Server interrupted by user")
+        except Exception as e:
+            self.logger.error(f"Server error: {e}")
+            raise
+        finally:
+            self._running = False
+            self.shutdown()
     
     def get_app(self) -> FastMCP:
         """
@@ -112,7 +176,30 @@ class KnowledgeMCPServer:
     
     def shutdown(self) -> None:
         """Shutdown the server and cleanup resources."""
+        self.logger.info("=" * 60)
         self.logger.info(f"Shutting down {self.server_name}")
-        if hasattr(self.knowledge_core, 'shutdown'):
-            self.knowledge_core.shutdown()
-        self.logger.info("Server shutdown complete")
+        self.logger.info("=" * 60)
+        
+        try:
+            # Shutdown knowledge core
+            if hasattr(self, 'knowledge_core') and self.knowledge_core:
+                self.knowledge_core.shutdown()
+            
+            self._initialized = False
+            self._running = False
+            
+            self.logger.info("=" * 60)
+            self.logger.info("Server shutdown complete")
+            self.logger.info("=" * 60)
+            
+        except Exception as e:
+            self.logger.error(f"Error during server shutdown: {e}")
+            raise
+    
+    def is_running(self) -> bool:
+        """Check if the server is currently running."""
+        return self._running
+    
+    def is_initialized(self) -> bool:
+        """Check if the server is initialized."""
+        return self._initialized

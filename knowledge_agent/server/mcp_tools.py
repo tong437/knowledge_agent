@@ -588,4 +588,94 @@ def register_knowledge_tools(app: FastMCP, knowledge_core) -> None:
             logger.error(f"Unexpected error importing knowledge: {e}")
             return _format_error_response(e, {"data_path": data_path})
     
+    @app.tool()
+    def get_statistics() -> Dict[str, Any]:
+        """
+        Get knowledge base statistics.
+        
+        Returns statistics about the knowledge base including counts of items,
+        categories, tags, and relationships.
+        
+        Returns:
+            Dictionary with knowledge base statistics
+        """
+        try:
+            logger.info("Retrieving knowledge base statistics")
+            
+            stats = knowledge_core.get_statistics()
+            
+            return _format_success_response(
+                "Successfully retrieved knowledge base statistics",
+                {
+                    "statistics": stats
+                }
+            )
+            
+        except KnowledgeAgentError as e:
+            logger.error(f"Knowledge agent error: {e}")
+            return _format_error_response(e, {})
+        except Exception as e:
+            logger.error(f"Unexpected error retrieving statistics: {e}")
+            return _format_error_response(e, {})
+    
+    @app.tool()
+    def get_performance_metrics() -> Dict[str, Any]:
+        """
+        Get performance metrics for all operations.
+        
+        Returns performance metrics including operation counts, durations,
+        success rates, and error rates.
+        
+        Returns:
+            Dictionary with performance metrics
+        """
+        try:
+            logger.info("Retrieving performance metrics")
+            
+            metrics = knowledge_core.get_performance_metrics()
+            
+            return _format_success_response(
+                "Successfully retrieved performance metrics",
+                {
+                    "metrics": metrics
+                }
+            )
+            
+        except KnowledgeAgentError as e:
+            logger.error(f"Knowledge agent error: {e}")
+            return _format_error_response(e, {})
+        except Exception as e:
+            logger.error(f"Unexpected error retrieving performance metrics: {e}")
+            return _format_error_response(e, {})
+    
+    @app.tool()
+    def get_error_summary() -> Dict[str, Any]:
+        """
+        Get error summary and recent errors.
+        
+        Returns a summary of errors that have occurred in the system including
+        error counts by type and recent error details.
+        
+        Returns:
+            Dictionary with error summary
+        """
+        try:
+            logger.info("Retrieving error summary")
+            
+            error_summary = knowledge_core.get_error_summary()
+            
+            return _format_success_response(
+                "Successfully retrieved error summary",
+                {
+                    "error_summary": error_summary
+                }
+            )
+            
+        except KnowledgeAgentError as e:
+            logger.error(f"Knowledge agent error: {e}")
+            return _format_error_response(e, {})
+        except Exception as e:
+            logger.error(f"Unexpected error retrieving error summary: {e}")
+            return _format_error_response(e, {})
+    
     logger.info("Knowledge management tools registered successfully")

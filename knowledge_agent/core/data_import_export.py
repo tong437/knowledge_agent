@@ -578,3 +578,122 @@ class DataImporter:
             if isinstance(e, DataImportError):
                 raise
             raise DataImportError(f"Failed to import full database: {e}")
+
+
+
+class DataImportExport:
+    """
+    Unified data import/export interface.
+    
+    Provides a single interface for both importing and exporting knowledge data,
+    integrating with the storage manager for seamless data transfer.
+    """
+    
+    def __init__(self, storage_manager):
+        """
+        Initialize the data import/export handler.
+        
+        Args:
+            storage_manager: Storage manager instance for data access
+        """
+        self.storage_manager = storage_manager
+        self.exporter = DataExporter()
+        self.importer = DataImporter()
+    
+    def export_to_json(self) -> Dict[str, Any]:
+        """
+        Export all knowledge data to JSON format.
+        
+        Returns:
+            Dict containing all exported data
+        """
+        # Get all data from storage
+        items = self.storage_manager.get_all_knowledge_items()
+        categories = self.storage_manager.get_all_categories()
+        tags = self.storage_manager.get_all_tags()
+        
+        # Get all relationships
+        relationships = []
+        for item in items:
+            item_relationships = self.storage_manager.get_relationships_for_item(item.id)
+            relationships.extend(item_relationships)
+        
+        # Convert to dictionaries
+        items_data = []
+        for item in items:
+            item_dict = {
+                'id': item.id,
+                'title': item.title,
+                'content': item.content,
+                'source_type': item.source_type.value if hasattr(item.source_type, 'value') else str(item.source_type),
+                'source_path': item.source_path,
+                'categories': [cat.name for cat in item.categories],
+                'tags': [tag.name for tag in item.tags],
+                'metadata': item.metadata,
+                'created_at': item.created_at.isoformat() if item.created_at else None,
+                'updated_at': item.updated_at.isoformat() if item.updated_at else None
+            }
+            items_data.append(item_dict)
+        
+        categories_data = [
+            {
+                'id': cat.id,
+                'name': cat.name,
+                'description': cat.description,
+                'parent_id': cat.parent_id,
+                'confidence': cat.confidence
+            }
+            for cat in categories
+        ]
+        
+        tags_data = [
+            {
+                'id': tag.id,
+                'name': tag.name,
+                'color': tag.color,
+                'usage_count': tag.usage_count
+            }
+            for tag in tags
+        ]
+        
+        relationships_data = [
+            {
+                'source_id': rel.source_id,
+                'target_id': rel.target_id,
+                'relationship_type': rel.relationship_type.value if hasattr(rel.relationship_type, 'value') else str(rel.relationship_type),
+                'strength': rel.strength,
+                'description': rel.description
+            }
+            for rel in relationships
+        ]
+        
+        return {
+            'version': '1.0',
+            'export_date': datetime.now().isoformat(),
+            'knowledge_items': items_data,
+            'categories': categories_data,
+            'tags': tags_data,
+            'relationships': relationships_data
+        }
+    
+    def import_from_json(self, data: Dict[str, Any]) -> bool:
+        """
+        Import knowledge data from JSON format.
+        
+        Args:
+            data: Dictionary containing data to import
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Validate data
+            errors = self.importer.validate_import_data(data)
+            if errors:
+                raise DataImportError(f"Data validation failed: {'; '.join(errors)}")
+            
+            # Import using storage manager's import method
+            return self.storage_manager.import_data(data)
+            
+        except Exception as e:
+            raise DataImportError(f"Failed to import data: {e}")
