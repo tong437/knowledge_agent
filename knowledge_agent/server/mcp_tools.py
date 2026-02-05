@@ -108,14 +108,15 @@ def register_knowledge_tools(app: FastMCP, knowledge_core) -> None:
                 "auto": SourceType.DOCUMENT,  # Default to document for auto
                 "document": SourceType.DOCUMENT,
                 "pdf": SourceType.PDF,
-                "web": SourceType.WEB_PAGE,
+                "web": SourceType.WEB,
                 "code": SourceType.CODE,
                 "image": SourceType.IMAGE
             }
             
             source = DataSource(
                 path=source_path.strip(),
-                source_type=type_mapping.get(source_type.lower(), SourceType.DOCUMENT)
+                source_type=type_mapping.get(source_type.lower(), SourceType.DOCUMENT),
+                metadata={}
             )
             
             # Process the data source
