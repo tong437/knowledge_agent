@@ -1,15 +1,16 @@
 """
-Core knowledge agent implementation.
+知识管理智能体核心实现模块。
 """
 
 import logging
+from pathlib import Path
 from typing import Dict, Any, List, Optional
-from ..models import KnowledgeItem, DataSource, Category, Tag, Relationship
+from ..models import KnowledgeItem, DataSource, Category, Tag, Relationship, SourceType
 from ..interfaces import DataSourceProcessor, KnowledgeOrganizer, SearchEngine, StorageManager
 from ..storage import SQLiteStorageManager
 from ..organizers import KnowledgeOrganizerImpl
 from ..search import SearchEngineImpl
-from ..processors import DocumentProcessor, PDFProcessor, CodeProcessor
+from ..processors import DocumentProcessor, PDFProcessor, CodeProcessor, WebProcessor
 from .exceptions import KnowledgeAgentError, ConfigurationError
 from .logging_config import (
     monitor_performance,
@@ -21,72 +22,73 @@ from .logging_config import (
 from .component_registry import get_component_registry, ComponentRegistry
 from .config_manager import get_config_manager, ConfigManager
 from .data_import_export import DataImportExport
+from .source_type_detector import SourceTypeDetector
+from .security_validator import SecurityValidator
 
 
 class KnowledgeAgentCore:
     """
-    Core implementation of the personal knowledge management agent.
+    个人知识管理智能体核心实现。
     
-    Coordinates between different components to provide unified
-    knowledge management functionality.
+    协调各组件之间的交互，提供统一的知识管理功能。
     """
     
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
-        Initialize the knowledge agent core.
+        初始化知识管理智能体核心。
         
         Args:
-            config: Configuration dictionary (optional)
+            config: 配置字典（可选）
         """
         self.logger = logging.getLogger("knowledge_agent.core")
         self.config = config or {}
         
-        # Component instances (will be initialized in later tasks)
+        # 组件实例（将在后续任务中初始化）
         self._storage_manager: Optional[StorageManager] = None
         self._data_processors: Dict[str, DataSourceProcessor] = {}
         self._knowledge_organizer: Optional[KnowledgeOrganizer] = None
         self._search_engine: Optional[SearchEngine] = None
         self._data_import_export: Optional[DataImportExport] = None
         
-        # Component registry for dependency injection
+        # 组件注册表，用于依赖注入
         self._registry: ComponentRegistry = get_component_registry()
         
-        # Configuration manager
+        # 配置管理器
         self._config_manager: Optional[ConfigManager] = None
         
-        # Initialization state
+        # 初始化状态
         self._initialized = False
         self._shutdown_requested = False
         
-        # Initialize components
+        # 初始化组件
         self._initialize_components()
         
         self._initialized = True
         self.logger.info("Knowledge agent core initialized successfully")
     
     def _initialize_components(self) -> None:
-        """Initialize core components based on configuration."""
+        """根据配置初始化核心组件。"""
         try:
             self.logger.info("Starting component initialization...")
             
-            # Initialize configuration manager if config path is provided
+            # 如果提供了配置文件路径，则初始化配置管理器
             config_path = self.config.get("config_path")
             if config_path:
                 self._config_manager = get_config_manager(config_path)
                 self.logger.info(f"✓ Loaded configuration from {config_path}")
-                # Merge loaded config with provided config
+                # 将加载的配置与提供的配置合并
                 loaded_config = self._config_manager.get_config()
-                # Update self.config with loaded values
+                # 用加载的值更新 self.config
                 if not self.config.get("storage"):
                     self.config["storage"] = {
                         "type": loaded_config.storage.type,
                         "path": loaded_config.storage.path
                     }
             
-            # Register components with the registry
+            # 向注册表注册组件
             self._register_components()
             
-            # Initialize storage manager
+            # 初始化存储管理器
             storage_config = self.config.get("storage", {})
             storage_type = storage_config.get("type", "sqlite")
             
@@ -100,7 +102,7 @@ class KnowledgeAgentCore:
                 self._storage_manager = SQLiteStorageManager("knowledge_agent.db")
                 self._registry.set_instance("storage_manager", self._storage_manager)
             
-            # Initialize knowledge organizer
+            # 初始化知识组织器
             if self._storage_manager:
                 self._knowledge_organizer = KnowledgeOrganizerImpl(self._storage_manager)
                 self._registry.set_instance("knowledge_organizer", self._knowledge_organizer)
@@ -108,57 +110,57 @@ class KnowledgeAgentCore:
             else:
                 self.logger.warning("Storage manager not available, knowledge organizer not initialized")
             
-            # Initialize search engine
+            # 初始化搜索引擎
             search_config = self.config.get("search", {})
             index_dir = search_config.get("index_dir", "search_index")
             self._search_engine = SearchEngineImpl(index_dir)
             self._registry.set_instance("search_engine", self._search_engine)
             self.logger.info(f"✓ Initialized search engine with index at {index_dir}")
             
-            # Initialize data processors
+            # 初始化数据处理器
             self._initialize_data_processors()
             
-            # Initialize data import/export
+            # 初始化数据导入导出
             self._data_import_export = DataImportExport(self._storage_manager)
             self.logger.info("✓ Initialized data import/export")
             
-            # Log component registry status
+            # 记录组件注册表状态
             self._registry.log_status()
             
             self.logger.info("Component initialization completed successfully")
             
         except Exception as e:
             self.logger.error(f"Failed to initialize components: {e}")
-            # Cleanup any partially initialized components
+            # 清理已部分初始化的组件
             self._cleanup_components()
             raise KnowledgeAgentError(f"Component initialization failed: {e}")
     
     def _register_components(self) -> None:
-        """Register all components with the component registry."""
+        """将所有组件注册到组件注册表。"""
         self.logger.info("Registering components with registry...")
         
-        # Register storage manager
+        # 注册存储管理器
         self._registry.register(
             name="storage_manager",
             component_type=SQLiteStorageManager,
             dependencies=[]
         )
         
-        # Register knowledge organizer
+        # 注册知识组织器
         self._registry.register(
             name="knowledge_organizer",
             component_type=KnowledgeOrganizerImpl,
             dependencies=["storage_manager"]
         )
         
-        # Register search engine
+        # 注册搜索引擎
         self._registry.register(
             name="search_engine",
             component_type=SearchEngineImpl,
             dependencies=[]
         )
         
-        # Register data processors
+        # 注册数据处理器
         self._registry.register(
             name="document_processor",
             component_type=DocumentProcessor,
@@ -177,25 +179,32 @@ class KnowledgeAgentCore:
             dependencies=[]
         )
         
+        # 注册网页处理器
+        self._registry.register(
+            name="web_processor",
+            component_type=WebProcessor,
+            dependencies=[]
+        )
+        
         self.logger.info("Components registered with registry")
     
     def _initialize_data_processors(self) -> None:
-        """Initialize all data source processors."""
+        """初始化所有数据源处理器。"""
         self.logger.info("Initializing data processors...")
         
-        # Initialize document processor
+        # 初始化文档处理器
         doc_processor = DocumentProcessor()
         self._data_processors["document"] = doc_processor
         self._data_processors["txt"] = doc_processor
         self._data_processors["markdown"] = doc_processor
         self._registry.set_instance("document_processor", doc_processor)
         
-        # Initialize PDF processor
+        # 初始化 PDF 处理器
         pdf_processor = PDFProcessor()
         self._data_processors["pdf"] = pdf_processor
         self._registry.set_instance("pdf_processor", pdf_processor)
         
-        # Initialize code processor
+        # 初始化代码处理器
         code_processor = CodeProcessor()
         self._data_processors["code"] = code_processor
         self._data_processors["python"] = code_processor
@@ -203,47 +212,52 @@ class KnowledgeAgentCore:
         self._data_processors["java"] = code_processor
         self._registry.set_instance("code_processor", code_processor)
         
+        # 初始化网页处理器
+        web_processor = WebProcessor()
+        self._data_processors["web"] = web_processor
+        self._registry.set_instance("web_processor", web_processor)
+        
         self.logger.info(f"✓ Initialized {len(self._data_processors)} data processors")
     
     @monitor_performance("collect_knowledge")
     @track_errors({"component": "knowledge_collection"})
     def collect_knowledge(self, source: DataSource) -> KnowledgeItem:
         """
-        Collect knowledge from a data source.
+        从数据源收集知识。
         
         Args:
-            source: The data source to process
+            source: 要处理的数据源
             
         Returns:
-            KnowledgeItem: The created knowledge item
+            KnowledgeItem: 创建的知识条目
             
         Raises:
-            KnowledgeAgentError: If collection fails
+            KnowledgeAgentError: 收集失败时抛出
         """
         try:
             self.logger.info(f"Collecting knowledge from: {source.path}")
             
-            # Determine the appropriate processor based on source type
-            processor = self._get_processor_for_source(source)
-            
-            if not processor:
+            # 根据数据源类型确定合适的处理器（未注册类型会抛出 NotImplementedError）
+            try:
+                processor = self._get_processor_for_source(source)
+            except NotImplementedError as e:
                 raise KnowledgeAgentError(
                     f"No processor available for source type: {source.source_type.value}"
-                )
+                ) from e
             
-            # Validate the source
+            # 验证数据源
             if not processor.validate(source):
                 raise KnowledgeAgentError(f"Invalid data source: {source.path}")
             
-            # Process the source to create a knowledge item
+            # 处理数据源以创建知识条目
             item = processor.process(source)
             
-            # Save the item to storage
+            # 将条目保存到存储
             if self._storage_manager:
                 self._storage_manager.save_knowledge_item(item)
                 self.logger.info(f"✓ Saved knowledge item: {item.id}")
             
-            # Update search index
+            # 更新搜索索引
             if self._search_engine:
                 self._search_engine.update_index(item)
                 self.logger.info(f"✓ Updated search index for item: {item.id}")
@@ -256,52 +270,64 @@ class KnowledgeAgentCore:
             self.logger.error(f"Error collecting knowledge: {e}")
             raise KnowledgeAgentError(f"Failed to collect knowledge: {e}")
     
-    def _get_processor_for_source(self, source: DataSource) -> Optional[DataSourceProcessor]:
+    def _get_processor_for_source(self, source: DataSource) -> DataSourceProcessor:
         """
-        Get the appropriate processor for a data source.
-        
+        获取适合数据源的处理器。
+
         Args:
-            source: The data source
-            
+            source: 数据源
+
         Returns:
-            DataSourceProcessor or None if no processor is available
+            匹配的 DataSourceProcessor 实例
+
+        Raises:
+            NotImplementedError: 没有注册对应类型的处理器时抛出
         """
         source_type = source.source_type.value.lower()
-        
-        # Check if we have a direct match
+
+        # 检查是否有直接匹配
         if source_type in self._data_processors:
             return self._data_processors[source_type]
-        
-        # Check file extension for more specific matching
+
+        # 通过文件扩展名进行更精确的匹配
         if source.path:
             ext = source.path.split('.')[-1].lower()
             if ext in self._data_processors:
                 return self._data_processors[ext]
-            
-            # Map common extensions to processors
+
+            # 将常见扩展名映射到处理器
             if ext in ['txt', 'md', 'doc', 'docx']:
-                return self._data_processors.get('document')
+                processor = self._data_processors.get('document')
+                if processor:
+                    return processor
             elif ext in ['py', 'js', 'java', 'cpp', 'c', 'ts']:
-                return self._data_processors.get('code')
+                processor = self._data_processors.get('code')
+                if processor:
+                    return processor
             elif ext == 'pdf':
-                return self._data_processors.get('pdf')
-        
-        return None
+                processor = self._data_processors.get('pdf')
+                if processor:
+                    return processor
+
+        raise NotImplementedError(
+            f"No processor registered for source type: {source.source_type.value}"
+        )
+
     
     @monitor_performance("organize_knowledge")
     @track_errors({"component": "knowledge_organization"})
     def organize_knowledge(self, item: KnowledgeItem) -> Dict[str, Any]:
         """
-        Organize a knowledge item (classify, tag, find relationships).
+        组织知识条目（分类、打标签、查找关联关系）。
         
         Args:
-            item: The knowledge item to organize
+            item: 要组织的知识条目
             
         Returns:
-            Dict containing organization results
+            包含组织结果的字典
             
         Raises:
-            KnowledgeAgentError: If organization fails
+            KnowledgeAgentError: 组织失败时抛出
         """
         try:
             self.logger.info(f"Organizing knowledge item: {item.id}")
@@ -309,29 +335,29 @@ class KnowledgeAgentCore:
             if not self._knowledge_organizer:
                 raise KnowledgeAgentError("Knowledge organizer not initialized")
             
-            # Classify the item
+            # 对条目进行分类
             categories = self._knowledge_organizer.classify(item)
             self.logger.info(f"Classified into {len(categories)} categories")
             
-            # Generate tags
+            # 生成标签
             tags = self._knowledge_organizer.generate_tags(item)
             self.logger.info(f"Generated {len(tags)} tags")
             
-            # Find relationships
+            # 查找关联关系
             relationships = self._knowledge_organizer.find_relationships(item)
             self.logger.info(f"Found {len(relationships)} relationships")
             
-            # Update the item with categories and tags
+            # 用分类和标签更新条目
             for category in categories:
                 item.add_category(category)
             for tag in tags:
                 item.add_tag(tag)
             
-            # Save the organized item
+            # 保存已组织的条目
             if self._storage_manager:
                 self._storage_manager.save_knowledge_item(item)
             
-            # Update knowledge graph with relationships
+            # 用关联关系更新知识图谱
             if relationships:
                 self._knowledge_organizer.update_knowledge_graph(relationships)
             
@@ -359,17 +385,17 @@ class KnowledgeAgentCore:
     @track_errors({"component": "knowledge_search"})
     def search_knowledge(self, query: str, **options) -> Dict[str, Any]:
         """
-        Search for knowledge items.
+        搜索知识条目。
         
         Args:
-            query: Search query string
-            **options: Search options
+            query: 搜索查询字符串
+            **options: 搜索选项
             
         Returns:
-            Dict containing search results
+            包含搜索结果的字典
             
         Raises:
-            KnowledgeAgentError: If search fails
+            KnowledgeAgentError: 搜索失败时抛出
         """
         try:
             self.logger.info(f"Searching knowledge: {query}")
@@ -377,10 +403,10 @@ class KnowledgeAgentCore:
             if not self._search_engine:
                 raise KnowledgeAgentError("Search engine not initialized")
             
-            # Create search options from kwargs
+            # 从关键字参数创建搜索选项
             from ..models import SearchOptions
             
-            # Handle category and tag filters
+            # 处理分类和标签过滤器
             include_categories = []
             if "category" in options and options["category"]:
                 include_categories = [options["category"]]
@@ -401,10 +427,10 @@ class KnowledgeAgentCore:
                 group_by_category=options.get("group_by_category", False)
             )
             
-            # Execute search
+            # 执行搜索
             search_results = self._search_engine.search(query, search_options)
             
-            # Convert to dictionary format
+            # 转换为字典格式
             results_dict = {
                 "query": search_results.query,
                 "total_results": search_results.total_found,
@@ -437,16 +463,16 @@ class KnowledgeAgentCore:
     
     def get_knowledge_item(self, item_id: str) -> Optional[KnowledgeItem]:
         """
-        Retrieve a knowledge item by ID.
+        根据 ID 获取知识条目。
         
         Args:
-            item_id: ID of the item to retrieve
+            item_id: 要获取的条目 ID
             
         Returns:
-            KnowledgeItem if found, None otherwise
+            找到则返回 KnowledgeItem，否则返回 None
             
         Raises:
-            KnowledgeAgentError: If retrieval fails
+            KnowledgeAgentError: 获取失败时抛出
         """
         try:
             self.logger.info(f"Retrieving knowledge item: {item_id}")
@@ -469,16 +495,19 @@ class KnowledgeAgentCore:
     
     def list_knowledge_items(self, **filters) -> List[KnowledgeItem]:
         """
-        List knowledge items with optional filtering.
+        列出知识条目，支持可选的过滤条件。
+        
+        委托给存储层的 query_knowledge_items() 方法，
+        在数据库层面完成过滤和分页，避免加载全部数据到内存。
         
         Args:
-            **filters: Filter criteria (category, tag, limit, offset)
+            **filters: 过滤条件（category、tag、limit、offset）
             
         Returns:
-            List of knowledge items
+            知识条目列表
             
         Raises:
-            KnowledgeAgentError: If listing fails
+            KnowledgeAgentError: 列出失败时抛出
         """
         try:
             self.logger.info("Listing knowledge items")
@@ -486,37 +515,18 @@ class KnowledgeAgentCore:
             if not self._storage_manager:
                 raise KnowledgeAgentError("Storage manager not initialized")
             
-            # Get all items
-            all_items = self._storage_manager.get_all_knowledge_items()
-            
-            # Apply filters
-            filtered_items = all_items
-            
-            # Filter by category
-            if "category" in filters and filters["category"]:
-                category_name = filters["category"]
-                filtered_items = [
-                    item for item in filtered_items
-                    if any(cat.name == category_name for cat in item.categories)
-                ]
-            
-            # Filter by tag
-            if "tag" in filters and filters["tag"]:
-                tag_name = filters["tag"]
-                filtered_items = [
-                    item for item in filtered_items
-                    if any(tag.name == tag_name for tag in item.tags)
-                ]
-            
-            # Apply pagination
-            offset = filters.get("offset", 0)
+            # 委托给存储层的 query_knowledge_items() 方法
+            category = filters.get("category")
+            tag = filters.get("tag")
             limit = filters.get("limit", 50)
+            offset = filters.get("offset", 0)
+            items = self._storage_manager.query_knowledge_items(
+                category=category, tag=tag, limit=limit, offset=offset
+            )
             
-            paginated_items = filtered_items[offset:offset + limit]
+            self.logger.info(f"Retrieved {len(items)} knowledge items")
             
-            self.logger.info(f"Retrieved {len(paginated_items)} knowledge items (total: {len(filtered_items)})")
-            
-            return paginated_items
+            return items
             
         except Exception as e:
             self.logger.error(f"Error listing knowledge items: {e}")
@@ -524,16 +534,16 @@ class KnowledgeAgentCore:
     
     def export_data(self, format: str = "json") -> Dict[str, Any]:
         """
-        Export all knowledge data.
+        导出所有知识数据。
         
         Args:
-            format: Export format (currently only 'json' is supported)
+            format: 导出格式（目前仅支持 'json'）
             
         Returns:
-            Exported data dictionary
+            导出的数据字典
             
         Raises:
-            KnowledgeAgentError: If export fails
+            KnowledgeAgentError: 导出失败时抛出
         """
         try:
             self.logger.info(f"Exporting data in {format} format")
@@ -544,7 +554,7 @@ class KnowledgeAgentCore:
             if format.lower() != "json":
                 raise KnowledgeAgentError(f"Unsupported export format: {format}")
             
-            # Export data using the data import/export component
+            # 使用数据导入导出组件导出数据
             export_data = self._data_import_export.export_to_json()
             
             self.logger.info(f"Successfully exported {len(export_data.get('knowledge_items', []))} items")
@@ -557,16 +567,16 @@ class KnowledgeAgentCore:
     
     def import_data(self, data: Dict[str, Any]) -> bool:
         """
-        Import knowledge data.
+        导入知识数据。
         
         Args:
-            data: Data dictionary to import (must contain knowledge_items, categories, tags, relationships)
+            data: 要导入的数据字典（必须包含 knowledge_items、categories、tags、relationships）
             
         Returns:
-            True if successful, False otherwise
+            成功返回 True，否则返回 False
             
         Raises:
-            KnowledgeAgentError: If import fails
+            KnowledgeAgentError: 导入失败时抛出
         """
         try:
             self.logger.info("Importing knowledge data")
@@ -574,18 +584,21 @@ class KnowledgeAgentCore:
             if not self._data_import_export:
                 raise KnowledgeAgentError("Data import/export not initialized")
             
-            # Validate data structure
+            # 验证数据结构
             if not isinstance(data, dict):
                 raise KnowledgeAgentError("Import data must be a dictionary")
             
-            # Import data using the data import/export component
-            success = self._data_import_export.import_from_json(data)
+            # 使用数据导入导出组件导入数据
+            result = self._data_import_export.import_from_json(data)
+            
+            # import_from_json 返回结果摘要字典，判断是否成功导入
+            success = isinstance(result, dict) and result.get("error_count", 0) == 0
             
             if success:
                 item_count = len(data.get("knowledge_items", []))
                 self.logger.info(f"Successfully imported {item_count} items")
                 
-                # Rebuild search index after import
+                # 导入后重建搜索索引
                 if self._search_engine and self._storage_manager:
                     self.logger.info("Rebuilding search index after import...")
                     all_items = self._storage_manager.get_all_knowledge_items()
@@ -602,17 +615,17 @@ class KnowledgeAgentCore:
     
     def get_similar_items(self, item_id: str, limit: int = 10) -> List[KnowledgeItem]:
         """
-        Find items similar to the given knowledge item.
+        查找与给定知识条目相似的条目。
         
         Args:
-            item_id: ID of the reference item
-            limit: Maximum number of similar items to return
+            item_id: 参考条目的 ID
+            limit: 返回的最大相似条目数量
             
         Returns:
-            List of similar knowledge items
+            相似知识条目列表
             
         Raises:
-            KnowledgeAgentError: If retrieval fails
+            KnowledgeAgentError: 获取失败时抛出
         """
         try:
             self.logger.info(f"Finding similar items to: {item_id}")
@@ -623,12 +636,12 @@ class KnowledgeAgentCore:
             if not self._storage_manager:
                 raise KnowledgeAgentError("Storage manager not initialized")
             
-            # Get the reference item
+            # 获取参考条目
             item = self._storage_manager.get_knowledge_item(item_id)
             if not item:
                 raise KnowledgeAgentError(f"Knowledge item not found: {item_id}")
             
-            # Find similar items using search engine
+            # 使用搜索引擎查找相似条目
             similar_items = self._search_engine.get_similar_items(item, limit=limit)
             
             self.logger.info(f"Found {len(similar_items)} similar items")
@@ -639,12 +652,275 @@ class KnowledgeAgentCore:
             self.logger.error(f"Error finding similar items: {e}")
             raise KnowledgeAgentError(f"Failed to find similar items: {e}")
     
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_all_categories(self) -> List[Category]:
         """
-        Get knowledge base statistics.
+        返回所有分类。
         
         Returns:
-            Statistics dictionary
+            分类列表
+            
+        Raises:
+            KnowledgeAgentError: 获取失败时抛出
+        """
+        try:
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+            return self._storage_manager.get_all_categories()
+        except Exception as e:
+            self.logger.error(f"Error retrieving categories: {e}")
+            raise KnowledgeAgentError(f"Failed to retrieve categories: {e}")
+    
+    def get_all_tags(self) -> List[Tag]:
+        """
+        返回所有标签。
+        
+        Returns:
+            标签列表
+            
+        Raises:
+            KnowledgeAgentError: 获取失败时抛出
+        """
+        try:
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+            return self._storage_manager.get_all_tags()
+        except Exception as e:
+            self.logger.error(f"Error retrieving tags: {e}")
+            raise KnowledgeAgentError(f"Failed to retrieve tags: {e}")
+    
+    def get_knowledge_graph(self) -> Dict[str, Any]:
+        """
+        返回知识图谱的节点和边数据。
+        
+        遍历所有知识条目作为节点，获取所有关系作为边，
+        返回 {"nodes": [...], "edges": [...]} 格式的图谱数据。
+        
+        Returns:
+            包含 nodes 和 edges 的字典
+            
+        Raises:
+            KnowledgeAgentError: 获取失败时抛出
+        """
+        try:
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+            
+            # 获取所有知识条目作为节点
+            all_items = self._storage_manager.get_all_knowledge_items()
+            nodes = [
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "source_type": item.source_type.value,
+                }
+                for item in all_items
+            ]
+            
+            # 获取所有关系作为边
+            edges = []
+            for item in all_items:
+                relationships = self._storage_manager.get_relationships_for_item(item.id)
+                for rel in relationships:
+                    edges.append({
+                        "source_id": rel.source_id,
+                        "target_id": rel.target_id,
+                        "relationship_type": rel.relationship_type.value,
+                        "strength": rel.strength,
+                    })
+            
+            return {"nodes": nodes, "edges": edges}
+            
+        except Exception as e:
+            self.logger.error(f"Error retrieving knowledge graph: {e}")
+            raise KnowledgeAgentError(f"Failed to retrieve knowledge graph: {e}")
+    
+    def update_knowledge_item(self, item_id: str, updates: Dict[str, Any]) -> bool:
+        """
+        更新知识条目并重新索引。
+        
+        Args:
+            item_id: 知识条目 ID
+            updates: 可更新字段字典
+            
+        Returns:
+            更新成功返回 True，条目不存在返回 False
+            
+        Raises:
+            KnowledgeAgentError: 更新失败时抛出
+        """
+        try:
+            self.logger.info(f"Updating knowledge item: {item_id}")
+            
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+            
+            # 委托给存储层执行更新
+            success = self._storage_manager.update_knowledge_item(item_id, updates)
+            
+            # 如果更新成功且搜索引擎可用，重新索引该条目
+            if success and self._search_engine:
+                updated_item = self._storage_manager.get_knowledge_item(item_id)
+                if updated_item:
+                    self._search_engine.update_index(updated_item)
+                    self.logger.info(f"Re-indexed knowledge item: {item_id}")
+            
+            return success
+            
+        except Exception as e:
+            self.logger.error(f"Error updating knowledge item: {e}")
+            raise KnowledgeAgentError(f"Failed to update knowledge item: {e}")
+    
+    def delete_knowledge_item(self, item_id: str) -> bool:
+        """
+        删除知识条目及其关联数据和搜索索引。
+        
+        Args:
+            item_id: 知识条目 ID
+            
+        Returns:
+            删除成功返回 True，条目不存在返回 False
+            
+        Raises:
+            KnowledgeAgentError: 删除失败时抛出
+        """
+        try:
+            self.logger.info(f"Deleting knowledge item: {item_id}")
+            
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+            
+            # 委托给存储层执行删除
+            success = self._storage_manager.delete_knowledge_item(item_id)
+            
+            # 如果删除成功且搜索引擎可用，从索引中移除
+            if success and self._search_engine:
+                try:
+                    self._search_engine.remove_from_index(item_id)
+                    self.logger.info(f"Removed from search index: {item_id}")
+                except Exception as index_err:
+                    # 索引删除失败不影响主流程，仅记录日志
+                    self.logger.warning(
+                        f"Failed to remove item from search index: {index_err}"
+                    )
+            
+            return success
+            
+        except Exception as e:
+            self.logger.error(f"Error deleting knowledge item: {e}")
+            raise KnowledgeAgentError(f"Failed to delete knowledge item: {e}")
+    
+    def batch_collect_knowledge(
+        self,
+        directory_path: str,
+        file_pattern: str = "*",
+        recursive: bool = False
+    ) -> Dict[str, Any]:
+        """
+        遍历目录批量处理文件。
+        
+        对目录中匹配模式的文件逐一进行类型检测和知识收集，
+        单文件失败不会中断整个流程。
+        
+        Args:
+            directory_path: 目录路径
+            file_pattern: 文件匹配模式（glob 格式）
+            recursive: 是否递归处理子目录
+            
+        Returns:
+            批量处理结果摘要，包含 success_count、failure_count、
+            failed_files 和 errors
+            
+        Raises:
+            KnowledgeAgentError: 目录路径无效或安全验证失败时抛出
+        """
+        self.logger.info(
+            f"Batch collecting knowledge from: {directory_path} "
+            f"(pattern={file_pattern}, recursive={recursive})"
+        )
+        
+        # 安全验证：从配置中读取安全策略
+        security_config = self.config.get("security", {})
+        allowed_paths = security_config.get("allowed_paths")
+        blocked_extensions = security_config.get("blocked_extensions")
+        validator = SecurityValidator(
+            allowed_paths=allowed_paths,
+            blocked_extensions=blocked_extensions,
+        )
+        if not validator.validate_path(directory_path):
+            raise KnowledgeAgentError(
+                f"Directory path failed security validation: {directory_path}"
+            )
+        
+        # 验证目录存在
+        dir_path = Path(directory_path)
+        if not dir_path.is_dir():
+            raise KnowledgeAgentError(
+                f"Directory does not exist: {directory_path}"
+            )
+        
+        # 使用 glob 或 rglob 匹配文件
+        if recursive:
+            matched_files = list(dir_path.rglob(file_pattern))
+        else:
+            matched_files = list(dir_path.glob(file_pattern))
+        
+        # 只处理文件，跳过目录
+        matched_files = [f for f in matched_files if f.is_file()]
+        
+        success_count = 0
+        failure_count = 0
+        failed_files: List[str] = []
+        errors: List[str] = []
+        
+        for file_path in matched_files:
+            file_str = str(file_path)
+            try:
+                # 安全验证单个文件
+                if not validator.validate_path(file_str):
+                    failure_count += 1
+                    failed_files.append(file_str)
+                    errors.append(f"Security validation failed: {file_str}")
+                    continue
+                
+                # 自动检测数据源类型
+                source_type = SourceTypeDetector.detect(file_str)
+                source = DataSource(
+                    path=file_str,
+                    source_type=source_type,
+                    metadata={"batch_source": directory_path},
+                )
+                
+                # 收集知识
+                self.collect_knowledge(source)
+                success_count += 1
+                
+            except Exception as e:
+                # 单文件失败不中断整个流程
+                failure_count += 1
+                failed_files.append(file_str)
+                errors.append(f"{file_str}: {e}")
+                self.logger.warning(f"Failed to process file: {file_str}, error: {e}")
+        
+        self.logger.info(
+            f"Batch collection completed: {success_count} succeeded, "
+            f"{failure_count} failed out of {len(matched_files)} files"
+        )
+        
+        return {
+            "success_count": success_count,
+            "failure_count": failure_count,
+            "failed_files": failed_files,
+            "errors": errors,
+        }
+    
+    def get_statistics(self) -> Dict[str, Any]:
+        """
+        获取知识库统计信息。
+        
+        使用 SQL COUNT 聚合查询，避免加载全部数据到内存。
+        
+        Returns:
+            统计信息字典
         """
         try:
             self.logger.info("Retrieving knowledge base statistics")
@@ -658,22 +934,13 @@ class KnowledgeAgentCore:
                     "message": "Storage manager not initialized",
                 }
             
-            # Get actual statistics from storage
-            items = self._storage_manager.get_all_knowledge_items()
-            categories = self._storage_manager.get_all_categories()
-            tags = self._storage_manager.get_all_tags()
-            
-            # Count relationships
-            total_relationships = 0
-            for item in items:
-                relationships = self._storage_manager.get_relationships_for_item(item.id)
-                total_relationships += len(relationships)
-            
+            # 使用 SQL COUNT 聚合查询获取统计数据
+            stats = self._storage_manager.get_database_stats()
             return {
-                "total_items": len(items),
-                "total_categories": len(categories),
-                "total_tags": len(tags),
-                "total_relationships": total_relationships,
+                "total_items": stats.get("knowledge_items", 0),
+                "total_categories": stats.get("categories", 0),
+                "total_tags": stats.get("tags", 0),
+                "total_relationships": stats.get("relationships", 0),
             }
             
         except Exception as e:
@@ -682,31 +949,31 @@ class KnowledgeAgentCore:
     
     def get_performance_metrics(self) -> Dict[str, Any]:
         """
-        Get performance metrics for all operations.
+        获取所有操作的性能指标。
         
         Returns:
-            Performance metrics dictionary
+            性能指标字典
         """
         monitor = get_performance_monitor()
         return monitor.get_metrics()
     
     def get_error_summary(self) -> Dict[str, Any]:
         """
-        Get error summary.
+        获取错误摘要。
         
         Returns:
-            Error summary dictionary
+            错误摘要字典
         """
         tracker = get_error_tracker()
         return tracker.get_error_summary()
     
     def log_monitoring_report(self) -> None:
-        """Log a comprehensive monitoring report."""
+        """记录综合监控报告。"""
         self.logger.info("\n" + "=" * 60)
         self.logger.info("KNOWLEDGE AGENT MONITORING REPORT")
         self.logger.info("=" * 60)
         
-        # Log statistics
+        # 记录统计信息
         try:
             stats = self.get_statistics()
             self.logger.info("\nKnowledge Base Statistics:")
@@ -715,18 +982,18 @@ class KnowledgeAgentCore:
         except Exception as e:
             self.logger.error(f"Failed to get statistics: {e}")
         
-        # Log performance metrics
+        # 记录性能指标
         monitor = get_performance_monitor()
         monitor.log_metrics()
         
-        # Log error summary
+        # 记录错误摘要
         tracker = get_error_tracker()
         tracker.log_error_summary()
         
         self.logger.info("=" * 60)
     
     def shutdown(self) -> None:
-        """Shutdown the knowledge agent and cleanup resources."""
+        """关闭知识管理智能体并清理资源。"""
         if self._shutdown_requested:
             self.logger.warning("Shutdown already in progress")
             return
@@ -738,7 +1005,7 @@ class KnowledgeAgentCore:
             self.logger.info("Initiating knowledge agent core shutdown...")
             self.logger.info("=" * 60)
             
-            # Cleanup components
+            # 清理组件
             self._cleanup_components()
             
             self._initialized = False
@@ -751,10 +1018,10 @@ class KnowledgeAgentCore:
             raise KnowledgeAgentError(f"Failed to shutdown cleanly: {e}")
     
     def _cleanup_components(self) -> None:
-        """Cleanup all initialized components."""
+        """清理所有已初始化的组件。"""
         cleanup_errors = []
         
-        # Cleanup search engine
+        # 清理搜索引擎
         if self._search_engine:
             try:
                 self.logger.info("Closing search engine...")
@@ -766,7 +1033,7 @@ class KnowledgeAgentCore:
                 self.logger.error(error_msg)
                 cleanup_errors.append(error_msg)
         
-        # Cleanup storage manager
+        # 清理存储管理器
         if self._storage_manager:
             try:
                 self.logger.info("Closing storage manager...")
@@ -778,7 +1045,7 @@ class KnowledgeAgentCore:
                 self.logger.error(error_msg)
                 cleanup_errors.append(error_msg)
         
-        # Cleanup knowledge organizer
+        # 清理知识组织器
         if self._knowledge_organizer:
             try:
                 self.logger.info("Cleaning up knowledge organizer...")
@@ -790,7 +1057,7 @@ class KnowledgeAgentCore:
                 self.logger.error(error_msg)
                 cleanup_errors.append(error_msg)
         
-        # Cleanup data processors
+        # 清理数据处理器
         if self._data_processors:
             try:
                 self.logger.info("Cleaning up data processors...")
@@ -809,9 +1076,9 @@ class KnowledgeAgentCore:
             self.logger.info("All components cleaned up successfully")
     
     def is_initialized(self) -> bool:
-        """Check if the agent is fully initialized."""
+        """检查智能体是否已完全初始化。"""
         return self._initialized
     
     def is_shutdown_requested(self) -> bool:
-        """Check if shutdown has been requested."""
+        """检查是否已请求关闭。"""
         return self._shutdown_requested

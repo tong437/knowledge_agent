@@ -1,5 +1,5 @@
 """
-Unit tests for core knowledge agent functionality.
+知识代理核心功能单元测试。
 """
 
 import pytest
@@ -7,17 +7,17 @@ from knowledge_agent.core import KnowledgeAgentCore, KnowledgeAgentError
 
 
 class TestKnowledgeAgentCore:
-    """Test cases for KnowledgeAgentCore."""
+    """KnowledgeAgentCore 测试用例。"""
     
     def test_create_core(self, knowledge_agent_core):
-        """Test creating a knowledge agent core."""
+        """测试创建知识代理核心。"""
         core = knowledge_agent_core
         assert core is not None
         assert hasattr(core, 'config')
         assert hasattr(core, 'logger')
     
     def test_core_with_config(self):
-        """Test creating core with custom configuration."""
+        """测试使用自定义配置创建核心。"""
         config = {
             "storage": {"type": "sqlite", "path": ":memory:"},
             "search": {"type": "whoosh"},
@@ -25,27 +25,30 @@ class TestKnowledgeAgentCore:
         core = KnowledgeAgentCore(config)
         assert core.config == config
     
-    def test_collect_knowledge_not_implemented(self, knowledge_agent_core, sample_data_source):
-        """Test that collect_knowledge raises KnowledgeAgentError with NotImplementedError."""
+    def test_collect_knowledge_invalid_source(self, knowledge_agent_core, sample_data_source):
+        """测试传入不存在的文件路径时，collect_knowledge 应抛出 KnowledgeAgentError。"""
         core = knowledge_agent_core
-        with pytest.raises(KnowledgeAgentError, match="will be implemented in task 3"):
+        # 使用一个不存在的文件路径，验证会失败
+        sample_data_source.path = "/nonexistent/path/does_not_exist.txt"
+        with pytest.raises(KnowledgeAgentError):
             core.collect_knowledge(sample_data_source)
     
-    def test_search_knowledge_not_implemented(self, knowledge_agent_core):
-        """Test that search_knowledge raises KnowledgeAgentError with NotImplementedError."""
+    def test_search_knowledge_empty_results(self, knowledge_agent_core):
+        """测试在空知识库中搜索时，应返回包含空结果的字典。"""
         core = knowledge_agent_core
-        with pytest.raises(KnowledgeAgentError, match="will be implemented in task 6"):
-            core.search_knowledge("test query")
+        result = core.search_knowledge("test query")
+        assert isinstance(result, dict)
+        assert "results" in result
     
     def test_organize_knowledge(self, knowledge_agent_core, sample_knowledge_item):
-        """Test organizing a knowledge item."""
+        """测试组织知识条目。"""
         core = knowledge_agent_core
         
-        # Save the item first
+        # 先保存条目
         if core._storage_manager:
             core._storage_manager.save_knowledge_item(sample_knowledge_item)
         
-        # Organize the item
+        # 组织条目
         result = core.organize_knowledge(sample_knowledge_item)
         
         assert isinstance(result, dict)
@@ -56,7 +59,7 @@ class TestKnowledgeAgentCore:
         assert result["item_id"] == sample_knowledge_item.id
     
     def test_get_statistics(self, knowledge_agent_core):
-        """Test getting knowledge base statistics."""
+        """测试获取知识库统计信息。"""
         core = knowledge_agent_core
         stats = core.get_statistics()
         
@@ -65,10 +68,10 @@ class TestKnowledgeAgentCore:
         assert "total_categories" in stats
         assert "total_tags" in stats
         assert "total_relationships" in stats
-        assert stats["total_items"] == 0  # Empty initially
+        assert stats["total_items"] == 0  # 初始为空
     
     def test_shutdown(self, knowledge_agent_core):
-        """Test shutting down the core."""
+        """测试关闭核心。"""
         core = knowledge_agent_core
-        # Should not raise any exceptions
+        # 不应抛出任何异常
         core.shutdown()

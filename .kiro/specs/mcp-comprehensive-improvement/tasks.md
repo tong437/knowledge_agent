@@ -46,8 +46,8 @@
     - **验证: 需求 2.4**
 
 
-- [-] 2. 实现知识条目更新和删除功能（存储层 + 核心层）
-  - [-] 2.1 实现 `update_knowledge_item()` 存储层方法
+- [x] 2. 实现知识条目更新和删除功能（存储层 + 核心层）
+  - [x] 2.1 实现 `update_knowledge_item()` 存储层方法
     - 在 `sqlite_storage.py` 中新增 `update_knowledge_item(item_id, updates)` 方法
     - 支持 title、content、categories、tags 的部分字段更新
     - 自动更新 `updated_at` 时间戳，条目不存在时返回 False
@@ -76,12 +76,12 @@
     - 测试文件：`knowledge_agent/tests/test_storage_properties.py`
     - **验证: 需求 12.2, 12.4**
 
-- [ ] 3. 检查点 - 存储层验证
+- [x] 3. 检查点 - 存储层验证
   - 确保所有存储层测试通过，如有问题请向用户确认。
 
 
-- [ ] 4. 实现新增核心组件（SourceTypeDetector、SecurityValidator）
-  - [ ] 4.1 创建 `SourceTypeDetector` 数据源类型自动检测器
+- [x] 4. 实现新增核心组件（SourceTypeDetector、SecurityValidator）
+  - [x] 4.1 创建 `SourceTypeDetector` 数据源类型自动检测器
     - 新建 `knowledge_agent/core/source_type_detector.py`
     - 实现扩展名到 SourceType 的映射表和 `detect()` 静态方法
     - 检测优先级：URL 模式 > 文件扩展名 > 默认 DOCUMENT
@@ -93,7 +93,7 @@
     - 测试文件：`knowledge_agent/tests/test_source_type_detector.py`
     - **验证: 需求 3.1, 3.2, 3.3, 3.4, 3.5, 3.6**
 
-  - [ ] 4.3 创建 `SecurityValidator` 安全路径验证器
+  - [x] 4.3 创建 `SecurityValidator` 安全路径验证器
     - 新建 `knowledge_agent/core/security_validator.py`
     - 实现 `validate_path()` 方法：解析绝对路径、检查扩展名黑名单、检查 allowed_paths 范围
     - allowed_paths 为空时允许任意路径
@@ -118,8 +118,8 @@
     - **验证: 需求 10.5**
 
 
-- [ ] 5. 实现 WebProcessor 网页处理器
-  - [ ] 5.1 实现 `WebProcessor` 类
+- [x] 5. 实现 WebProcessor 网页处理器
+  - [x] 5.1 实现 `WebProcessor` 类
     - 修改 `knowledge_agent/processors/web_processor.py`，实现完整的网页处理器
     - 使用 `urllib.request` 获取网页，`html.parser` 解析 HTML（或项目已有的 requests/beautifulsoup4）
     - 实现 `_extract_content()`（清除 HTML 标签）、`_extract_title()`（提取 title/h1）、`validate()`（验证 URL 格式）
@@ -142,8 +142,8 @@
   - 确保 SourceTypeDetector、SecurityValidator、WebProcessor 的所有测试通过，如有问题请向用户确认。
 
 
-- [ ] 7. 扩展 KnowledgeAgentCore 核心层（封装修复、公开接口、业务逻辑）
-  - [ ] 7.1 添加公开接口方法（修复封装违规）
+- [x] 7. 扩展 KnowledgeAgentCore 核心层（封装修复、公开接口、业务逻辑）
+  - [x] 7.1 添加公开接口方法（修复封装违规）
     - 在 `knowledge_agent/core/knowledge_agent_core.py` 中新增 `get_all_categories()`、`get_all_tags()`、`get_knowledge_graph()` 公开方法
     - 这些方法委托给 `_storage_manager` 的对应方法
     - _需求: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
@@ -160,15 +160,15 @@
     - 测试文件：`knowledge_agent/tests/test_core_properties.py`
     - **验证: 需求 4.6**
 
-  - [ ] 7.4 修改 `list_knowledge_items()` 委托给存储层的 `query_knowledge_items()`
+  - [x] 7.4 修改 `list_knowledge_items()` 委托给存储层的 `query_knowledge_items()`
     - 修改 `knowledge_agent_core.py` 中的 `list_knowledge_items()` 方法，使用存储层的数据库过滤分页
     - _需求: 2.1, 2.2, 2.3_
 
-  - [ ] 7.5 修改 `get_statistics()` 使用 SQL COUNT 聚合查询
+  - [x] 7.5 修改 `get_statistics()` 使用 SQL COUNT 聚合查询
     - 修改 `knowledge_agent_core.py` 中的 `get_statistics()` 方法，调用 `get_database_stats()` 替代加载全部数据
     - _需求: 2.4_
 
-  - [ ] 7.6 修改 `_get_processor_for_source()` 对未注册处理器抛出 NotImplementedError
+  - [x] 7.6 修改 `_get_processor_for_source()` 对未注册处理器抛出 NotImplementedError
     - 修改 `knowledge_agent_core.py`，未注册类型抛出描述性 `NotImplementedError` 而非返回 None
     - _需求: 6.3_
 
@@ -178,13 +178,13 @@
     - 测试文件：`knowledge_agent/tests/test_core_properties.py`
     - **验证: 需求 6.3**
 
-  - [ ] 7.8 实现核心层的 `update_knowledge_item()` 和 `delete_knowledge_item()` 方法
+  - [x] 7.8 实现核心层的 `update_knowledge_item()` 和 `delete_knowledge_item()` 方法
     - 在 `knowledge_agent_core.py` 中新增更新和删除方法
     - 更新时调用存储层更新 + 搜索引擎重新索引
     - 删除时调用存储层删除 + 搜索引擎移除索引
     - _需求: 8.1, 8.4, 8.5, 12.2, 12.4, 12.5_
 
-  - [ ] 7.9 实现核心层的 `batch_collect_knowledge()` 批量收集方法
+  - [x] 7.9 实现核心层的 `batch_collect_knowledge()` 批量收集方法
     - 在 `knowledge_agent_core.py` 中新增批量收集方法
     - 遍历目录匹配文件，逐个处理，单文件失败不中断
     - 处理前调用 SecurityValidator 验证目录路径
@@ -201,8 +201,8 @@
 - [ ] 8. 检查点 - 核心层验证
   - 确保 KnowledgeAgentCore 的所有公开接口、更新/删除、批量收集功能测试通过，如有问题请向用户确认。
 
-- [ ] 9. 实现导入合并策略
-  - [ ] 9.1 修改 `DataImportExport` 支持三种合并策略
+- [x] 9. 实现导入合并策略
+  - [x] 9.1 修改 `DataImportExport` 支持三种合并策略
     - 修改 `knowledge_agent/core/data_import_export.py` 中的 `import_from_json()` 方法
     - 实现 `skip_existing`、`overwrite`、`merge` 三种策略
     - merge 策略：分类和标签取并集，保留较新内容
@@ -235,41 +235,41 @@
     - **验证: 需求 9.4**
 
 
-- [ ] 10. 修复 MCP Resources 封装违规和 SSE 参数传递
-  - [ ] 10.1 修复 `mcp_resources.py` 中的封装违规
+- [x] 10. 修复 MCP Resources 封装违规和 SSE 参数传递
+  - [x] 10.1 修复 `mcp_resources.py` 中的封装违规
     - 修改 `knowledge_agent/server/mcp_resources.py`，将所有 `knowledge_core._storage_manager.xxx()` 调用替换为 `knowledge_core.get_all_categories()`、`knowledge_core.get_all_tags()`、`knowledge_core.get_knowledge_graph()` 等公开接口
     - _需求: 4.1, 4.2, 4.3_
 
-  - [ ] 10.2 修复 SSE 传输参数传递
+  - [x] 10.2 修复 SSE 传输参数传递
     - 修改 `knowledge_agent/server/knowledge_mcp_server.py` 中的 `start_sse()` 方法
     - 将 host 和 port 参数正确传递给 `FastMCP.run()`
     - 从配置文件读取默认值，未配置时使用 `localhost:8000`
     - _需求: 5.1, 5.2, 5.3_
 
-- [ ] 11. 扩展 MCP Tools（更新、删除、批量收集、搜索建议、空处理器提示）
-  - [ ] 11.1 修改 `mcp_tools.py` 处理空处理器暴露问题
+- [x] 11. 扩展 MCP Tools（更新、删除、批量收集、搜索建议、空处理器提示）
+  - [x] 11.1 修改 `mcp_tools.py` 处理空处理器暴露问题
     - 在 `knowledge_agent/server/mcp_tools.py` 中添加 `_validate_source_type()` 逻辑
     - 区分"已支持"和"已定义但未实现"的数据源类型
     - 对 web、image 等未实现类型返回明确的"功能未实现"提示
     - _需求: 6.1, 6.2, 6.4_
 
-  - [ ] 11.2 注册 `update_knowledge_item` MCP 工具
+  - [x] 11.2 注册 `update_knowledge_item` MCP 工具
     - 在 `mcp_tools.py` 中注册更新工具，接受 item_id 和可选的 title、content、categories、tags 参数
     - 调用 `knowledge_core.update_knowledge_item()` 并返回结果
     - _需求: 8.4_
 
-  - [ ] 11.3 注册 `delete_knowledge_item` MCP 工具
+  - [x] 11.3 注册 `delete_knowledge_item` MCP 工具
     - 在 `mcp_tools.py` 中注册删除工具，接受 item_id 参数
     - 调用 `knowledge_core.delete_knowledge_item()` 并返回结果
     - 不存在的 item_id 返回"条目未找到"错误响应
     - _需求: 12.1, 12.2, 12.3_
 
-  - [ ] 11.4 注册 `batch_collect_knowledge` MCP 工具
+  - [x] 11.4 注册 `batch_collect_knowledge` MCP 工具
     - 在 `mcp_tools.py` 中注册批量收集工具，接受 directory_path、file_pattern、recursive 参数
     - 调用 `knowledge_core.batch_collect_knowledge()` 并返回结果摘要
     - _需求: 13.1, 13.4_
 
-  - [ ] 11.5 注册 `suggest_search` MCP 工具并修复搜索建议功能
+  - [x] 11.5 注册 `suggest_search` MCP 工具并修复搜索建议功能
     - 在 `mcp_tools.py` 中注册搜索建议工具，接受 partial_query 参数
     - 修改 `knowledge_agent/search/search_engine_impl.py` 中的 `suggest()` 方法，基于 Whoosh 索引前缀匹配返回建议
     - 返回不超过 10 条建议，知识库为空时返回空列表
@@ -282,14 +282,14 @@
     - **验证: 需求 14.2**
 
 
-- [ ] 12. 实现 MCP Prompts 支持
-  - [ ] 12.1 创建 `mcp_prompts.py` 模块并注册提示模板
+- [x] 12. 实现 MCP Prompts 支持
+  - [x] 12.1 创建 `mcp_prompts.py` 模块并注册提示模板
     - 新建 `knowledge_agent/server/mcp_prompts.py`
     - 实现 `register_knowledge_prompts(app, knowledge_core)` 函数
     - 注册 3 个提示模板：`summarize_knowledge`（知识摘要生成）、`search_assistant`（知识搜索辅助）、`organize_suggestions`（知识整理建议）
     - _需求: 11.1, 11.2, 11.3, 11.4, 11.5_
 
-  - [ ] 12.2 在 `knowledge_mcp_server.py` 中集成 MCP Prompts 注册
+  - [x] 12.2 在 `knowledge_mcp_server.py` 中集成 MCP Prompts 注册
     - 修改 `knowledge_agent/server/knowledge_mcp_server.py`，调用 `register_knowledge_prompts()` 注册提示模板
     - _需求: 11.5_
 
@@ -299,25 +299,25 @@
     - 测试文件：`knowledge_agent/tests/test_mcp_prompts.py`
     - **验证: 需求 11.2, 11.3**
 
-- [ ] 13. 集成 SourceTypeDetector 和 SecurityValidator 到业务流程
-  - [ ] 13.1 在 `collect_knowledge` 工具中集成 SourceTypeDetector
+- [x] 13. 集成 SourceTypeDetector 和 SecurityValidator 到业务流程
+  - [x] 13.1 在 `collect_knowledge` 工具中集成 SourceTypeDetector
     - 修改 `mcp_tools.py` 中的 `collect_knowledge` 工具
     - 当 source_type 为 "auto" 时调用 `SourceTypeDetector.detect()` 自动检测类型
     - _需求: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-  - [ ] 13.2 在 `collect_knowledge` 工具中集成 SecurityValidator
+  - [x] 13.2 在 `collect_knowledge` 工具中集成 SecurityValidator
     - 修改 `mcp_tools.py`，在处理文件前调用 `SecurityValidator.validate_path()` 验证路径安全性
     - 从配置文件读取 `allowed_paths` 和 `blocked_extensions` 设置
     - _需求: 10.1, 10.2, 10.3, 10.4, 10.5_
 
-  - [ ] 13.3 在 WebProcessor 中注册到处理器注册表
+  - [x] 13.3 在 WebProcessor 中注册到处理器注册表
     - 修改 `knowledge_agent_core.py` 中的处理器注册逻辑，将 WebProcessor 注册为 WEB 类型的处理器
     - _需求: 7.1_
 
-- [ ] 14. 检查点 - MCP 协议层验证
+- [x] 14. 检查点 - MCP 协议层验证
   - 确保所有 MCP Tools、Resources、Prompts 功能正常，SourceTypeDetector 和 SecurityValidator 集成正确，如有问题请向用户确认。
 
-- [ ] 15. 最终检查点 - 全量测试验证
+- [x] 15. 最终检查点 - 全量测试验证
   - 运行全部测试套件（`pytest knowledge_agent/tests/`），确保所有单元测试和属性测试通过
   - 确认所有 14 项需求的验收标准均已覆盖
   - 如有问题请向用户确认
