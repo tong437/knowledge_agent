@@ -6,8 +6,8 @@
 
 ## 任务
 
-- [-] 1. 优化 SQLiteStorageManager 存储层（N+1 查询修复、数据库过滤分页、统计查询）
-  - [-] 1.1 修复 `get_all_knowledge_items()` 的 N+1 查询问题
+- [x] 1. 优化 SQLiteStorageManager 存储层（N+1 查询修复、数据库过滤分页、统计查询）
+  - [x] 1.1 修复 `get_all_knowledge_items()` 的 N+1 查询问题
     - 修改 `knowledge_agent/storage/sqlite_storage.py`，将逐条查询分类和标签改为 3 次批量查询（主表 + 分类映射 + 标签映射）
     - 在 Python 中按 item_id 分组组装 KnowledgeItem 对象
     - _需求: 1.1, 1.2, 1.3, 1.4_
@@ -18,7 +18,7 @@
     - 测试文件：`knowledge_agent/tests/test_storage_properties.py`
     - **验证: 需求 1.4**
 
-  - [-] 1.3 实现 `query_knowledge_items()` 数据库层面过滤和分页方法
+  - [x] 1.3 实现 `query_knowledge_items()` 数据库层面过滤和分页方法
     - 在 `sqlite_storage.py` 中新增 `query_knowledge_items(category, tag, limit, offset)` 方法
     - 使用 SQL WHERE 子句实现分类和标签过滤，使用 LIMIT/OFFSET 实现分页
     - _需求: 2.1, 2.2, 2.3, 2.5_
@@ -35,7 +35,7 @@
     - 测试文件：`knowledge_agent/tests/test_storage_properties.py`
     - **验证: 需求 2.3**
 
-  - [-] 1.6 实现 `get_database_stats()` 使用 SQL COUNT 聚合查询
+  - [x] 1.6 实现 `get_database_stats()` 使用 SQL COUNT 聚合查询
     - 在 `sqlite_storage.py` 中新增或修改 `get_database_stats()` 方法，使用 COUNT 聚合查询各表记录数
     - _需求: 2.4, 2.6_
 
@@ -46,8 +46,8 @@
     - **验证: 需求 2.4**
 
 
-- [ ] 2. 实现知识条目更新和删除功能（存储层 + 核心层）
-  - [ ] 2.1 实现 `update_knowledge_item()` 存储层方法
+- [-] 2. 实现知识条目更新和删除功能（存储层 + 核心层）
+  - [-] 2.1 实现 `update_knowledge_item()` 存储层方法
     - 在 `sqlite_storage.py` 中新增 `update_knowledge_item(item_id, updates)` 方法
     - 支持 title、content、categories、tags 的部分字段更新
     - 自动更新 `updated_at` 时间戳，条目不存在时返回 False
@@ -59,7 +59,7 @@
     - 测试文件：`knowledge_agent/tests/test_storage_properties.py`
     - **验证: 需求 8.1, 8.2**
 
-  - [ ] 2.3 实现删除知识条目的存储层方法（级联删除）
+  - [x] 2.3 实现删除知识条目的存储层方法（级联删除）
     - 在 `sqlite_storage.py` 中确保 `delete_knowledge_item(item_id)` 同时删除关联的分类映射、标签映射和关系数据
     - 条目不存在时返回 False
     - _需求: 12.4_

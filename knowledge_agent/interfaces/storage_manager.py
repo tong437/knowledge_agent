@@ -49,6 +49,22 @@ class StorageManager(ABC):
         pass
     
     @abstractmethod
+    def update_knowledge_item(self, item_id: str, updates: Dict[str, Any]) -> bool:
+        """
+        更新知识条目的部分字段。
+
+        支持部分字段更新，自动更新 updated_at 时间戳。
+
+        参数：
+            item_id：知识条目 ID
+            updates：可更新字段字典，支持 title、content、categories、tags
+
+        返回：
+            bool：更新成功返回 True，条目不存在返回 False
+        """
+        pass
+
+    @abstractmethod
     def delete_knowledge_item(self, item_id: str) -> bool:
         """
         Delete a knowledge item from storage.

@@ -494,6 +494,93 @@ class SQLiteStorageManager(StorageManager):
 
             return items
 
+    def update_knowledge_item(self, item_id: str, updates: Dict[str, Any]) -> bool:
+        """
+        更新知识条目的部分字段。
+
+        支持部分字段更新，自动更新 updated_at 时间戳。
+        对于 categories 和 tags 字段，采用先删后插的策略替换关联关系。
+
+        Args:
+            item_id: 知识条目 ID
+            updates: 可更新字段字典，支持 title、content、categories、tags
+
+        Returns:
+            更新成功返回 True，条目不存在返回 False
+        """
+        with self._use_connection() as conn:
+            try:
+                # 检查条目是否存在
+                cursor = conn.execute(
+                    "SELECT id FROM knowledge_items WHERE id = ?", (item_id,)
+                )
+                if cursor.fetchone() is None:
+                    logger.debug(f"知识条目不存在，跳过更新: {item_id}")
+                    return False
+
+                now = datetime.now()
+
+                # 构建主表的 SET 子句（title、content）
+                set_clauses = []
+                params = []
+
+                if "title" in updates:
+                    set_clauses.append("title = ?")
+                    params.append(updates["title"])
+
+                if "content" in updates:
+                    set_clauses.append("content = ?")
+                    params.append(updates["content"])
+
+                # 始终更新 updated_at 时间戳
+                set_clauses.append("updated_at = ?")
+                params.append(now.isoformat())
+
+                # 执行主表更新
+                params.append(item_id)
+                conn.execute(
+                    f"UPDATE knowledge_items SET {', '.join(set_clauses)} WHERE id = ?",
+                    params
+                )
+
+                # 更新分类关联（先删后插）
+                if "categories" in updates:
+                    conn.execute(
+                        "DELETE FROM knowledge_item_categories WHERE knowledge_item_id = ?",
+                        (item_id,)
+                    )
+                    for category in updates["categories"]:
+                        self._save_category_if_not_exists(conn, category)
+                        conn.execute(
+                            "INSERT OR IGNORE INTO knowledge_item_categories "
+                            "(knowledge_item_id, category_id) VALUES (?, ?)",
+                            (item_id, category.id)
+                        )
+
+                # 更新标签关联（先删后插）
+                if "tags" in updates:
+                    conn.execute(
+                        "DELETE FROM knowledge_item_tags WHERE knowledge_item_id = ?",
+                        (item_id,)
+                    )
+                    for tag in updates["tags"]:
+                        self._save_tag_if_not_exists(conn, tag)
+                        conn.execute(
+                            "INSERT OR IGNORE INTO knowledge_item_tags "
+                            "(knowledge_item_id, tag_id) VALUES (?, ?)",
+                            (item_id, tag.id)
+                        )
+
+                conn.commit()
+                logger.debug(f"已更新知识条目: {item_id}, 更新字段: {list(updates.keys())}")
+                return True
+
+            except sqlite3.Error as e:
+                conn.rollback()
+                logger.error(f"更新知识条目失败 {item_id}: {e}")
+                raise
+
+
     def delete_knowledge_item(self, item_id: str) -> bool:
         """Delete a knowledge item from storage."""
         with self._use_connection() as conn:
