@@ -297,21 +297,290 @@ class SQLiteStorageManager(StorageManager):
         return tags
     
     def get_all_knowledge_items(self) -> List[KnowledgeItem]:
-        """Retrieve all knowledge items from storage."""
+        """
+        获取存储中的所有知识条目。
+
+        使用批量查询优化，最多执行 3 次数据库查询：
+        1. 查询所有主条目
+        2. 批量获取所有条目的分类映射
+        3. 批量获取所有条目的标签映射
+        """
         with self._use_connection() as conn:
             conn.row_factory = sqlite3.Row
-            
-            cursor = conn.execute("SELECT id FROM knowledge_items")
-            item_ids = [row["id"] for row in cursor.fetchall()]
-            
+
+            # 查询 1：获取所有主条目
+            cursor = conn.execute("SELECT * FROM knowledge_items")
+            rows = cursor.fetchall()
+
+            if not rows:
+                return []
+
+            # 查询 2：批量获取所有条目的分类映射
+            cat_cursor = conn.execute("""
+                SELECT kic.knowledge_item_id, c.id, c.name, c.description,
+                       c.parent_id, c.confidence
+                FROM knowledge_item_categories kic
+                JOIN categories c ON kic.category_id = c.id
+            """)
+            categories_map: Dict[str, List[Category]] = {}
+            for cat_row in cat_cursor.fetchall():
+                item_id = cat_row["knowledge_item_id"]
+                category = Category(
+                    id=cat_row["id"],
+                    name=cat_row["name"],
+                    description=cat_row["description"],
+                    parent_id=cat_row["parent_id"],
+                    confidence=cat_row["confidence"]
+                )
+                categories_map.setdefault(item_id, []).append(category)
+
+            # 查询 3：批量获取所有条目的标签映射
+            tag_cursor = conn.execute("""
+                SELECT kit.knowledge_item_id, t.id, t.name, t.color,
+                       t.usage_count
+                FROM knowledge_item_tags kit
+                JOIN tags t ON kit.tag_id = t.id
+            """)
+            tags_map: Dict[str, List[Tag]] = {}
+            for tag_row in tag_cursor.fetchall():
+                item_id = tag_row["knowledge_item_id"]
+                tag = Tag(
+                    id=tag_row["id"],
+                    name=tag_row["name"],
+                    color=tag_row["color"],
+                    usage_count=tag_row["usage_count"]
+                )
+                tags_map.setdefault(item_id, []).append(tag)
+
+            # 组装完整的 KnowledgeItem 对象
             items = []
-            for item_id in item_ids:
-                item = self.get_knowledge_item(item_id)
-                if item:
-                    items.append(item)
-            
+            for row in rows:
+                item = KnowledgeItem(
+                    id=row["id"],
+                    title=row["title"],
+                    content=row["content"],
+                    source_type=SourceType(row["source_type"]),
+                    source_path=row["source_path"],
+                    categories=categories_map.get(row["id"], []),
+                    tags=tags_map.get(row["id"], []),
+                    metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+                    created_at=datetime.fromisoformat(row["created_at"]),
+                    updated_at=datetime.fromisoformat(row["updated_at"]),
+                    embedding=json.loads(row["embedding"]) if row["embedding"] else None
+                )
+                items.append(item)
+
             return items
-    
+
+    def query_knowledge_items(
+        self,
+        category: Optional[str] = None,
+        tag: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> List[KnowledgeItem]:
+        """
+        按分类、标签过滤并分页查询知识条目。
+
+        使用 SQL WHERE/JOIN 在数据库层面完成过滤和分页，
+        并对返回的条目批量加载分类和标签，避免 N+1 查询问题。
+
+        Args:
+            category: 按分类名称过滤（精确匹配），为 None 时不过滤
+            tag: 按标签名称过滤（精确匹配），为 None 时不过滤
+            limit: 每页返回的最大条目数，默认 50
+            offset: 分页偏移量，默认 0
+
+        Returns:
+            符合条件的 KnowledgeItem 列表，包含完整的 categories 和 tags
+        """
+        with self._use_connection() as conn:
+            conn.row_factory = sqlite3.Row
+
+            # 构建主查询，根据过滤条件动态添加 JOIN 和 WHERE
+            query = "SELECT DISTINCT ki.* FROM knowledge_items ki"
+            params: List[Any] = []
+
+            if category:
+                query += """
+                    JOIN knowledge_item_categories kic ON ki.id = kic.knowledge_item_id
+                    JOIN categories c ON kic.category_id = c.id"""
+
+            if tag:
+                query += """
+                    JOIN knowledge_item_tags kit ON ki.id = kit.knowledge_item_id
+                    JOIN tags t ON kit.tag_id = t.id"""
+
+            conditions = []
+            if category:
+                conditions.append("c.name = ?")
+                params.append(category)
+            if tag:
+                conditions.append("t.name = ?")
+                params.append(tag)
+
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+
+            query += " LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
+
+            cursor = conn.execute(query, params)
+            rows = cursor.fetchall()
+
+            if not rows:
+                return []
+
+            # 收集所有条目 ID，用于批量加载分类和标签
+            item_ids = [row["id"] for row in rows]
+            placeholders = ",".join(["?"] * len(item_ids))
+
+            # 批量获取这些条目的分类映射
+            cat_cursor = conn.execute(f"""
+                SELECT kic.knowledge_item_id, c.id, c.name, c.description,
+                       c.parent_id, c.confidence
+                FROM knowledge_item_categories kic
+                JOIN categories c ON kic.category_id = c.id
+                WHERE kic.knowledge_item_id IN ({placeholders})
+            """, item_ids)
+            categories_map: Dict[str, List[Category]] = {}
+            for cat_row in cat_cursor.fetchall():
+                kid = cat_row["knowledge_item_id"]
+                cat_obj = Category(
+                    id=cat_row["id"],
+                    name=cat_row["name"],
+                    description=cat_row["description"],
+                    parent_id=cat_row["parent_id"],
+                    confidence=cat_row["confidence"]
+                )
+                categories_map.setdefault(kid, []).append(cat_obj)
+
+            # 批量获取这些条目的标签映射
+            tag_cursor = conn.execute(f"""
+                SELECT kit.knowledge_item_id, t.id, t.name, t.color,
+                       t.usage_count
+                FROM knowledge_item_tags kit
+                JOIN tags t ON kit.tag_id = t.id
+                WHERE kit.knowledge_item_id IN ({placeholders})
+            """, item_ids)
+            tags_map: Dict[str, List[Tag]] = {}
+            for tag_row in tag_cursor.fetchall():
+                kid = tag_row["knowledge_item_id"]
+                tag_obj = Tag(
+                    id=tag_row["id"],
+                    name=tag_row["name"],
+                    color=tag_row["color"],
+                    usage_count=tag_row["usage_count"]
+                )
+                tags_map.setdefault(kid, []).append(tag_obj)
+
+            # 组装完整的 KnowledgeItem 对象
+            items = []
+            for row in rows:
+                item = KnowledgeItem(
+                    id=row["id"],
+                    title=row["title"],
+                    content=row["content"],
+                    source_type=SourceType(row["source_type"]),
+                    source_path=row["source_path"],
+                    categories=categories_map.get(row["id"], []),
+                    tags=tags_map.get(row["id"], []),
+                    metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+                    created_at=datetime.fromisoformat(row["created_at"]),
+                    updated_at=datetime.fromisoformat(row["updated_at"]),
+                    embedding=json.loads(row["embedding"]) if row["embedding"] else None
+                )
+                items.append(item)
+
+            return items
+
+    def update_knowledge_item(self, item_id: str, updates: Dict[str, Any]) -> bool:
+        """
+        更新知识条目的部分字段。
+
+        支持部分字段更新，自动更新 updated_at 时间戳。
+        对于 categories 和 tags 字段，采用先删后插的策略替换关联关系。
+
+        Args:
+            item_id: 知识条目 ID
+            updates: 可更新字段字典，支持 title、content、categories、tags
+
+        Returns:
+            更新成功返回 True，条目不存在返回 False
+        """
+        with self._use_connection() as conn:
+            try:
+                # 检查条目是否存在
+                cursor = conn.execute(
+                    "SELECT id FROM knowledge_items WHERE id = ?", (item_id,)
+                )
+                if cursor.fetchone() is None:
+                    logger.debug(f"知识条目不存在，跳过更新: {item_id}")
+                    return False
+
+                now = datetime.now()
+
+                # 构建主表的 SET 子句（title、content）
+                set_clauses = []
+                params = []
+
+                if "title" in updates:
+                    set_clauses.append("title = ?")
+                    params.append(updates["title"])
+
+                if "content" in updates:
+                    set_clauses.append("content = ?")
+                    params.append(updates["content"])
+
+                # 始终更新 updated_at 时间戳
+                set_clauses.append("updated_at = ?")
+                params.append(now.isoformat())
+
+                # 执行主表更新
+                params.append(item_id)
+                conn.execute(
+                    f"UPDATE knowledge_items SET {', '.join(set_clauses)} WHERE id = ?",
+                    params
+                )
+
+                # 更新分类关联（先删后插）
+                if "categories" in updates:
+                    conn.execute(
+                        "DELETE FROM knowledge_item_categories WHERE knowledge_item_id = ?",
+                        (item_id,)
+                    )
+                    for category in updates["categories"]:
+                        self._save_category_if_not_exists(conn, category)
+                        conn.execute(
+                            "INSERT OR IGNORE INTO knowledge_item_categories "
+                            "(knowledge_item_id, category_id) VALUES (?, ?)",
+                            (item_id, category.id)
+                        )
+
+                # 更新标签关联（先删后插）
+                if "tags" in updates:
+                    conn.execute(
+                        "DELETE FROM knowledge_item_tags WHERE knowledge_item_id = ?",
+                        (item_id,)
+                    )
+                    for tag in updates["tags"]:
+                        self._save_tag_if_not_exists(conn, tag)
+                        conn.execute(
+                            "INSERT OR IGNORE INTO knowledge_item_tags "
+                            "(knowledge_item_id, tag_id) VALUES (?, ?)",
+                            (item_id, tag.id)
+                        )
+
+                conn.commit()
+                logger.debug(f"已更新知识条目: {item_id}, 更新字段: {list(updates.keys())}")
+                return True
+
+            except sqlite3.Error as e:
+                conn.rollback()
+                logger.error(f"更新知识条目失败 {item_id}: {e}")
+                raise
+
+
     def delete_knowledge_item(self, item_id: str) -> bool:
         """Delete a knowledge item from storage."""
         with self._use_connection() as conn:

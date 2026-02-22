@@ -1,5 +1,5 @@
 """
-MCP resources registration for knowledge management.
+知识管理的 MCP 资源注册模块。
 """
 
 import logging
@@ -12,13 +12,13 @@ from ..core.exceptions import KnowledgeAgentError
 
 def _format_resource_response(data: Any) -> str:
     """
-    Format resource data as JSON string.
-    
+    将资源数据格式化为 JSON 字符串。
+
     Args:
-        data: Data to format
-        
+        data: 待格式化的数据
+
     Returns:
-        JSON string representation
+        JSON 字符串表示
     """
     try:
         return json.dumps(data, ensure_ascii=False, indent=2)
@@ -28,13 +28,13 @@ def _format_resource_response(data: Any) -> str:
 
 def _format_error_resource(error: Exception) -> str:
     """
-    Format an error as a JSON resource response.
-    
+    将错误格式化为 JSON 资源响应。
+
     Args:
-        error: Exception that occurred
-        
+        error: 发生的异常
+
     Returns:
-        JSON string with error information
+        包含错误信息的 JSON 字符串
     """
     return json.dumps({
         "error": type(error).__name__,
@@ -44,45 +44,44 @@ def _format_error_resource(error: Exception) -> str:
 
 def register_knowledge_resources(app: FastMCP, knowledge_core) -> None:
     """
-    Register knowledge management resources with the MCP server.
-    
-    Resources provide read-only access to knowledge base data through
-    URI-based endpoints.
-    
+    注册知识管理资源到 MCP 服务器。
+
+    资源通过基于 URI 的端点提供对知识库数据的只读访问。
+
     Args:
-        app: FastMCP application instance
-        knowledge_core: Knowledge agent core instance
+        app: FastMCP 应用实例
+        knowledge_core: 知识代理核心实例
     """
     logger = logging.getLogger("knowledge_agent.mcp_resources")
-    
+
     @app.resource("knowledge://items")
     def get_knowledge_items() -> str:
         """
-        Get a list of all knowledge items.
-        
-        Returns a JSON array of all knowledge items in the knowledge base,
-        including their metadata, categories, and tags.
-        
+        获取所有知识条目列表。
+
+        返回知识库中所有知识条目的 JSON 数组，
+        包括其元数据、分类和标签。
+
         Returns:
-            JSON string containing all knowledge items
+            包含所有知识条目的 JSON 字符串
         """
         try:
             logger.info("Retrieving all knowledge items resource")
-            
-            # Get all items from storage
+
+            # 从存储中获取所有条目
             items = knowledge_core.list_knowledge_items()
-            
-            # Convert to dictionaries
+
+            # 转换为字典
             items_data = [item.to_dict() for item in items]
-            
+
             response = {
                 "resource": "knowledge://items",
                 "count": len(items_data),
                 "items": items_data
             }
-            
+
             return _format_resource_response(response)
-            
+
         except NotImplementedError as e:
             logger.warning(f"Feature not yet implemented: {e}")
             return _format_resource_response({
@@ -97,41 +96,40 @@ def register_knowledge_resources(app: FastMCP, knowledge_core) -> None:
         except Exception as e:
             logger.error(f"Error retrieving knowledge items resource: {e}")
             return _format_error_resource(e)
-    
+
     @app.resource("knowledge://items/{item_id}")
     def get_knowledge_item_by_id(item_id: str) -> str:
         """
-        Get a specific knowledge item by ID.
-        
-        Returns complete information about a single knowledge item including
-        its content, categories, tags, and metadata.
-        
+        根据 ID 获取指定的知识条目。
+
+        返回单个知识条目的完整信息，包括其内容、分类、标签和元数据。
+
         Args:
-            item_id: ID of the knowledge item to retrieve
-            
+            item_id: 待获取的知识条目 ID
+
         Returns:
-            JSON string containing the knowledge item
+            包含知识条目的 JSON 字符串
         """
         try:
             logger.info(f"Retrieving knowledge item resource: {item_id}")
-            
-            # Get the item
+
+            # 获取知识条目
             item = knowledge_core.get_knowledge_item(item_id)
-            
+
             if not item:
                 return _format_resource_response({
                     "resource": f"knowledge://items/{item_id}",
                     "error": "NotFound",
                     "message": f"Knowledge item not found: {item_id}"
                 })
-            
+
             response = {
                 "resource": f"knowledge://items/{item_id}",
                 "item": item.to_dict()
             }
-            
+
             return _format_resource_response(response)
-            
+
         except NotImplementedError as e:
             logger.warning(f"Feature not yet implemented: {e}")
             return _format_resource_response({
@@ -145,197 +143,148 @@ def register_knowledge_resources(app: FastMCP, knowledge_core) -> None:
         except Exception as e:
             logger.error(f"Error retrieving knowledge item resource: {e}")
             return _format_error_resource(e)
-    
+
+
     @app.resource("knowledge://categories")
     def get_categories() -> str:
         """
-        Get a list of all categories.
-        
-        Returns all categories in the knowledge base with their hierarchical
-        structure and usage statistics.
-        
+        获取所有分类列表。
+
+        返回知识库中所有分类及其层级结构和使用统计。
+
         Returns:
-            JSON string containing all categories
+            包含所有分类的 JSON 字符串
         """
         try:
             logger.info("Retrieving categories resource")
-            
-            # Get categories from storage
-            if not knowledge_core._storage_manager:
-                return _format_resource_response({
-                    "resource": "knowledge://categories",
-                    "message": "Storage manager not initialized",
-                    "categories": []
-                })
-            
-            categories = knowledge_core._storage_manager.get_all_categories()
-            
-            # Convert to dictionaries
+
+            # 通过公开接口获取分类
+            categories = knowledge_core.get_all_categories()
+
+            # 转换为字典
             categories_data = [cat.to_dict() for cat in categories]
-            
+
             response = {
                 "resource": "knowledge://categories",
                 "count": len(categories_data),
                 "categories": categories_data
             }
-            
+
             return _format_resource_response(response)
-            
+
         except KnowledgeAgentError as e:
             logger.error(f"Knowledge agent error: {e}")
             return _format_error_resource(e)
         except Exception as e:
             logger.error(f"Error retrieving categories resource: {e}")
             return _format_error_resource(e)
-    
+
     @app.resource("knowledge://tags")
     def get_tags() -> str:
         """
-        Get a list of all tags.
-        
-        Returns all tags in the knowledge base with their usage counts
-        and color coding.
-        
+        获取所有标签列表。
+
+        返回知识库中所有标签及其使用次数和颜色编码。
+
         Returns:
-            JSON string containing all tags
+            包含所有标签的 JSON 字符串
         """
         try:
             logger.info("Retrieving tags resource")
-            
-            # Get tags from storage
-            if not knowledge_core._storage_manager:
-                return _format_resource_response({
-                    "resource": "knowledge://tags",
-                    "message": "Storage manager not initialized",
-                    "tags": []
-                })
-            
-            tags = knowledge_core._storage_manager.get_all_tags()
-            
-            # Convert to dictionaries
+
+            # 通过公开接口获取标签
+            tags = knowledge_core.get_all_tags()
+
+            # 转换为字典
             tags_data = [tag.to_dict() for tag in tags]
-            
+
             response = {
                 "resource": "knowledge://tags",
                 "count": len(tags_data),
                 "tags": tags_data
             }
-            
+
             return _format_resource_response(response)
-            
+
         except KnowledgeAgentError as e:
             logger.error(f"Knowledge agent error: {e}")
             return _format_error_resource(e)
         except Exception as e:
             logger.error(f"Error retrieving tags resource: {e}")
             return _format_error_resource(e)
-    
+
+
     @app.resource("knowledge://graph")
     def get_knowledge_graph() -> str:
         """
-        Get the knowledge graph structure.
-        
-        Returns the complete knowledge graph showing relationships between
-        knowledge items as nodes and edges.
-        
+        获取知识图谱结构。
+
+        返回完整的知识图谱，以节点和边的形式展示知识条目之间的关系。
+
         Returns:
-            JSON string containing the knowledge graph
+            包含知识图谱的 JSON 字符串
         """
         try:
             logger.info("Retrieving knowledge graph resource")
-            
-            # Get all items and relationships
-            if not knowledge_core._storage_manager:
-                return _format_resource_response({
-                    "resource": "knowledge://graph",
-                    "message": "Storage manager not initialized",
-                    "nodes": [],
-                    "edges": []
-                })
-            
-            items = knowledge_core._storage_manager.get_all_knowledge_items()
-            
-            # Build nodes
-            nodes = []
-            for item in items:
-                nodes.append({
-                    "id": item.id,
-                    "title": item.title,
-                    "source_type": item.source_type.value,
-                    "categories": [cat.name for cat in item.categories],
-                    "tags": [tag.name for tag in item.tags]
-                })
-            
-            # Build edges from relationships
-            edges = []
-            for item in items:
-                relationships = knowledge_core._storage_manager.get_relationships_for_item(item.id)
-                for rel in relationships:
-                    # Only add edge if this item is the source (to avoid duplicates)
-                    if rel.source_id == item.id:
-                        edges.append({
-                            "source": rel.source_id,
-                            "target": rel.target_id,
-                            "type": rel.relationship_type.value,
-                            "strength": rel.strength,
-                            "description": rel.description
-                        })
-            
+
+            # 通过公开接口获取知识图谱
+            graph_data = knowledge_core.get_knowledge_graph()
+
             response = {
                 "resource": "knowledge://graph",
-                "node_count": len(nodes),
-                "edge_count": len(edges),
-                "nodes": nodes,
-                "edges": edges
+                "node_count": len(graph_data.get("nodes", [])),
+                "edge_count": len(graph_data.get("edges", [])),
+                "nodes": graph_data.get("nodes", []),
+                "edges": graph_data.get("edges", [])
             }
-            
+
             return _format_resource_response(response)
-            
+
         except KnowledgeAgentError as e:
             logger.error(f"Knowledge agent error: {e}")
             return _format_error_resource(e)
         except Exception as e:
             logger.error(f"Error retrieving knowledge graph resource: {e}")
             return _format_error_resource(e)
-    
+
+
     @app.resource("knowledge://stats")
     def get_knowledge_stats() -> str:
         """
-        Get statistics about the knowledge base.
-        
-        Returns comprehensive statistics including counts of items, categories,
-        tags, relationships, and source type distribution.
-        
+        获取知识库统计信息。
+
+        返回全面的统计数据，包括条目、分类、标签、关系的数量以及数据源类型分布。
+
         Returns:
-            JSON string containing knowledge base statistics
+            包含知识库统计信息的 JSON 字符串
         """
         try:
             logger.info("Retrieving knowledge statistics resource")
-            
-            # Get statistics from core
+
+            # 通过公开接口获取统计信息
             stats = knowledge_core.get_statistics()
-            
-            # Add source type distribution if storage is available
-            if knowledge_core._storage_manager:
-                items = knowledge_core._storage_manager.get_all_knowledge_items()
-                source_distribution = {}
-                for item in items:
-                    source_type = item.source_type.value
-                    source_distribution[source_type] = source_distribution.get(source_type, 0) + 1
-                stats["source_type_distribution"] = source_distribution
-            
-            # Add timestamp
+
+            # 通过公开接口获取数据源类型分布
+            items = knowledge_core.list_knowledge_items()
+            source_distribution = {}
+            for item in items:
+                source_type = item.source_type.value
+                source_distribution[source_type] = source_distribution.get(source_type, 0) + 1
+            stats["source_type_distribution"] = source_distribution
+
+            # 添加时间戳
             from datetime import datetime
             stats["last_updated"] = datetime.now().isoformat()
             stats["resource"] = "knowledge://stats"
-            
+
             return _format_resource_response(stats)
-            
+
         except KnowledgeAgentError as e:
             logger.error(f"Knowledge agent error: {e}")
             return _format_error_resource(e)
         except Exception as e:
             logger.error(f"Error retrieving knowledge statistics: {e}")
             return _format_error_resource(e)
-    
+
     logger.info("Knowledge management resources registered successfully")
+
