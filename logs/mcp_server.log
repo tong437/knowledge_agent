@@ -1,0 +1,110 @@
+[2026-02-24T22:41:20.492797] [INFO] [knowledge_agent] Logging system initialized
+[2026-02-24T22:41:20.493797] [INFO] [knowledge_agent.main] ============================================================
+[2026-02-24T22:41:20.493797] [INFO] [knowledge_agent.main] Starting Personal Knowledge Management Agent MCP Server
+[2026-02-24T22:41:20.493797] [INFO] [knowledge_agent.main] ============================================================
+[2026-02-24T22:41:20.494798] [INFO] [knowledge_agent.system] ============================================================
+[2026-02-24T22:41:20.494798] [INFO] [knowledge_agent.system] System Information
+[2026-02-24T22:41:20.494798] [INFO] [knowledge_agent.system] ============================================================
+[2026-02-24T22:41:20.495797] [INFO] [knowledge_agent.system] Python version: 3.11.5 | packaged by Anaconda, Inc. | (main, Sep 11 2023, 13:26:23) [MSC v.1916 64 bit (AMD64)]
+[2026-02-24T22:41:20.496797] [INFO] [knowledge_agent.system] Platform: win32
+[2026-02-24T22:41:20.496797] [INFO] [knowledge_agent.system] ============================================================
+[2026-02-24T22:41:20.496797] [INFO] [knowledge_agent.personal-knowledge-agent] ============================================================
+[2026-02-24T22:41:20.497798] [INFO] [knowledge_agent.personal-knowledge-agent] Initializing Knowledge MCP Server: personal-knowledge-agent
+[2026-02-24T22:41:20.497798] [INFO] [knowledge_agent.personal-knowledge-agent] ============================================================
+[2026-02-24T22:41:20.507323] [INFO] [knowledge_agent.personal-knowledge-agent] ✓ FastMCP application created
+[2026-02-24T22:41:20.508322] [INFO] [knowledge_agent.core] Starting component initialization...
+[2026-02-24T22:41:20.509322] [INFO] [knowledge_agent.core] Registering components with registry...
+[2026-02-24T22:41:20.510323] [INFO] [knowledge_agent.registry] Registered component: storage_manager (type: SQLiteStorageManager)
+[2026-02-24T22:41:20.510323] [INFO] [knowledge_agent.registry] Registered component: knowledge_organizer (type: KnowledgeOrganizerImpl)
+[2026-02-24T22:41:20.511322] [INFO] [knowledge_agent.registry] Registered component: search_engine (type: SearchEngineImpl)
+[2026-02-24T22:41:20.512324] [INFO] [knowledge_agent.registry] Registered component: document_processor (type: DocumentProcessor)
+[2026-02-24T22:41:20.512324] [INFO] [knowledge_agent.registry] Registered component: pdf_processor (type: PDFProcessor)
+[2026-02-24T22:41:20.513320] [INFO] [knowledge_agent.registry] Registered component: code_processor (type: CodeProcessor)
+[2026-02-24T22:41:20.514323] [INFO] [knowledge_agent.registry] Registered component: web_processor (type: WebProcessor)
+[2026-02-24T22:41:20.514323] [INFO] [knowledge_agent.core] Components registered with registry
+[2026-02-24T22:41:20.518320] [INFO] [knowledge_agent.storage.sqlite_storage] Database initialized at knowledge_agent.db
+[2026-02-24T22:41:20.519610] [INFO] [knowledge_agent.registry] Set instance for component: storage_manager
+[2026-02-24T22:41:20.520321] [INFO] [knowledge_agent.core] ✓ Initialized SQLite storage at knowledge_agent.db
+[2026-02-24T22:41:20.522317] [INFO] [knowledge_agent.registry] Set instance for component: knowledge_organizer
+[2026-02-24T22:41:20.522317] [INFO] [knowledge_agent.core] ✓ Initialized knowledge organizer
+[2026-02-24T22:41:20.546932] [INFO] [knowledge_agent.registry] Set instance for component: search_engine
+[2026-02-24T22:41:20.547931] [INFO] [knowledge_agent.core] ✓ Initialized search engine with index at search_index
+[2026-02-24T22:41:20.548929] [INFO] [knowledge_agent.core] Initializing data processors...
+[2026-02-24T22:41:20.549929] [WARNING] [knowledge_agent.processors.base_processor] python-docx not available. Word document support disabled. Install with: pip install python-docx
+[2026-02-24T22:41:20.553932] [INFO] [knowledge_agent.registry] Set instance for component: document_processor
+[2026-02-24T22:41:20.781406] [INFO] [knowledge_agent.registry] Set instance for component: pdf_processor
+[2026-02-24T22:41:20.782410] [INFO] [knowledge_agent.registry] Set instance for component: code_processor
+[2026-02-24T22:41:20.782410] [INFO] [knowledge_agent.registry] Set instance for component: web_processor
+[2026-02-24T22:41:20.783412] [INFO] [knowledge_agent.core] ✓ Initialized 9 data processors
+[2026-02-24T22:41:20.785410] [INFO] [knowledge_agent.core] ✓ Initialized data import/export
+[2026-02-24T22:41:20.786422] [INFO] [knowledge_agent.registry] ============================================================
+[2026-02-24T22:41:20.786831] [INFO] [knowledge_agent.registry] Component Registry Status
+[2026-02-24T22:41:20.788350] [INFO] [knowledge_agent.registry] ============================================================
+[2026-02-24T22:41:20.789349] [INFO] [knowledge_agent.registry] 
+Component: storage_manager
+[2026-02-24T22:41:20.790349] [INFO] [knowledge_agent.registry]   Type: SQLiteStorageManager
+[2026-02-24T22:41:20.798350] [INFO] [knowledge_agent.registry]   Lifecycle: initialized
+[2026-02-24T22:41:20.799347] [INFO] [knowledge_agent.registry]   Initialized: True
+[2026-02-24T22:41:20.799347] [INFO] [knowledge_agent.registry] 
+Component: knowledge_organizer
+[2026-02-24T22:41:20.799347] [INFO] [knowledge_agent.registry]   Type: KnowledgeOrganizerImpl
+[2026-02-24T22:41:20.799347] [INFO] [knowledge_agent.registry]   Lifecycle: initialized
+[2026-02-24T22:41:20.810145] [INFO] [knowledge_agent.registry]   Initialized: True
+[2026-02-24T22:41:20.811225] [INFO] [knowledge_agent.registry]   Dependencies: storage_manager
+[2026-02-24T22:41:20.811225] [INFO] [knowledge_agent.registry] 
+Component: search_engine
+[2026-02-24T22:41:20.812225] [INFO] [knowledge_agent.registry]   Type: SearchEngineImpl
+[2026-02-24T22:41:20.812225] [INFO] [knowledge_agent.registry]   Lifecycle: initialized
+[2026-02-24T22:41:20.813226] [INFO] [knowledge_agent.registry]   Initialized: True
+[2026-02-24T22:41:20.813226] [INFO] [knowledge_agent.registry] 
+Component: document_processor
+[2026-02-24T22:41:20.813226] [INFO] [knowledge_agent.registry]   Type: DocumentProcessor
+[2026-02-24T22:41:20.813226] [INFO] [knowledge_agent.registry]   Lifecycle: initialized
+[2026-02-24T22:41:20.814224] [INFO] [knowledge_agent.registry]   Initialized: True
+[2026-02-24T22:41:20.814224] [INFO] [knowledge_agent.registry] 
+Component: pdf_processor
+[2026-02-24T22:41:20.815500] [INFO] [knowledge_agent.registry]   Type: PDFProcessor
+[2026-02-24T22:41:20.815500] [INFO] [knowledge_agent.registry]   Lifecycle: initialized
+[2026-02-24T22:41:20.815500] [INFO] [knowledge_agent.registry]   Initialized: True
+[2026-02-24T22:41:20.815500] [INFO] [knowledge_agent.registry] 
+Component: code_processor
+[2026-02-24T22:41:20.816586] [INFO] [knowledge_agent.registry]   Type: CodeProcessor
+[2026-02-24T22:41:20.816586] [INFO] [knowledge_agent.registry]   Lifecycle: initialized
+[2026-02-24T22:41:20.816586] [INFO] [knowledge_agent.registry]   Initialized: True
+[2026-02-24T22:41:20.816586] [INFO] [knowledge_agent.registry] 
+Component: web_processor
+[2026-02-24T22:41:20.822581] [INFO] [knowledge_agent.registry]   Type: WebProcessor
+[2026-02-24T22:41:20.823582] [INFO] [knowledge_agent.registry]   Lifecycle: initialized
+[2026-02-24T22:41:20.823582] [INFO] [knowledge_agent.registry]   Initialized: True
+[2026-02-24T22:41:20.826583] [INFO] [knowledge_agent.registry] ============================================================
+[2026-02-24T22:41:20.827582] [INFO] [knowledge_agent.core] Component initialization completed successfully
+[2026-02-24T22:41:20.827582] [INFO] [knowledge_agent.core] Knowledge agent core initialized successfully
+[2026-02-24T22:41:20.828586] [INFO] [knowledge_agent.personal-knowledge-agent] ✓ Knowledge agent core initialized
+[2026-02-24T22:41:20.828586] [INFO] [knowledge_agent.personal-knowledge-agent] Registering MCP components...
+[2026-02-24T22:41:20.874155] [INFO] [knowledge_agent.mcp_tools] Knowledge management tools registered successfully
+[2026-02-24T22:41:20.874155] [INFO] [knowledge_agent.personal-knowledge-agent] ✓ Knowledge tools registered
+[2026-02-24T22:41:20.879154] [INFO] [knowledge_agent.mcp_resources] Knowledge management resources registered successfully
+[2026-02-24T22:41:20.880154] [INFO] [knowledge_agent.personal-knowledge-agent] ✓ Knowledge resources registered
+[2026-02-24T22:41:20.890173] [INFO] [knowledge_agent.mcp_prompts] Knowledge management prompts registered successfully
+[2026-02-24T22:41:20.891172] [INFO] [knowledge_agent.personal-knowledge-agent] ✓ Knowledge prompts registered
+[2026-02-24T22:41:20.892174] [INFO] [knowledge_agent.personal-knowledge-agent] MCP components registered successfully
+[2026-02-24T22:41:20.892174] [INFO] [knowledge_agent.personal-knowledge-agent] ============================================================
+[2026-02-24T22:41:20.893172] [INFO] [knowledge_agent.personal-knowledge-agent] Knowledge MCP server initialized successfully
+[2026-02-24T22:41:20.893172] [INFO] [knowledge_agent.personal-knowledge-agent] ============================================================
+[2026-02-24T22:41:20.893172] [INFO] [knowledge_agent.main] Server: personal-knowledge-agent v0.1.0
+[2026-02-24T22:41:20.894173] [INFO] [knowledge_agent.main] Description: Personal Knowledge Management Agent MCP Server
+[2026-02-24T22:41:20.895169] [INFO] [knowledge_agent.main] Capabilities: ['knowledge_collection', 'knowledge_organization', 'semantic_search', 'knowledge_graph', 'data_export_import']
+[2026-02-24T22:41:20.895169] [INFO] [knowledge_agent.main] Transport: stdio
+[2026-02-24T22:41:20.896169] [INFO] [knowledge_agent.main] Using stdio transport (for local MCP clients)
+[2026-02-24T22:41:20.896169] [INFO] [knowledge_agent.personal-knowledge-agent] ============================================================
+[2026-02-24T22:41:20.897174] [INFO] [knowledge_agent.personal-knowledge-agent] Starting personal-knowledge-agent via stdio transport
+[2026-02-24T22:41:20.898172] [INFO] [knowledge_agent.personal-knowledge-agent] ============================================================
+[2026-02-24T22:43:16.974692] [INFO] [knowledge_agent.personal-knowledge-agent] ============================================================
+[2026-02-24T22:43:17.006341] [INFO] [knowledge_agent.personal-knowledge-agent] Shutting down personal-knowledge-agent
+[2026-02-24T22:43:17.006866] [INFO] [knowledge_agent.personal-knowledge-agent] ============================================================
+[2026-02-24T22:43:17.007877] [INFO] [knowledge_agent.core] ============================================================
+[2026-02-24T22:43:17.008876] [INFO] [knowledge_agent.core] Initiating knowledge agent core shutdown...
+[2026-02-24T22:43:17.009876] [INFO] [knowledge_agent.core] ============================================================
+[2026-02-24T22:43:17.009876] [INFO] [knowledge_agent.core] Closing search engine...
+[2026-02-24T22:43:17.217719] [INFO] [knowledge_agent.core] ✓ Search engine closed
+[2026-02-24T22:43:17.298786] [INFO] [knowledge_agent.core] Closing storage manager...
