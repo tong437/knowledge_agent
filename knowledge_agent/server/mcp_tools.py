@@ -399,17 +399,20 @@ def register_knowledge_tools(app: FastMCP, knowledge_core) -> None:
 
     @app.tool()
     def list_knowledge_items(category: str = "", tag: str = "",
-                           limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+                           limit: int = 50, offset: int = 0,
+                           include_content: bool = False) -> Dict[str, Any]:
         """
         列出知识条目，支持可选过滤。
 
         返回分页的知识条目列表，可按分类或标签进行过滤。
+        默认返回精简信息（不含完整内容），以避免响应过大。
 
         Args:
             category: 按分类名称过滤（可选，空字符串表示不过滤）
             tag: 按标签名称过滤（可选，空字符串表示不过滤）
             limit: 返回条目的最大数量（1-100）
             offset: 分页跳过的条目数量
+            include_content: 是否包含完整内容（默认 False，仅返回摘要信息）
 
         Returns:
             包含知识条目列表和元数据的字典
@@ -428,7 +431,7 @@ def register_knowledge_tools(app: FastMCP, knowledge_core) -> None:
                     {"offset": offset}
                 )
 
-            logger.info(f"Listing knowledge items (category: {category}, tag: {tag}, limit: {limit}, offset: {offset})")
+            logger.info(f"Listing knowledge items (category: {category}, tag: {tag}, limit: {limit}, offset: {offset}, include_content: {include_content})")
 
             # 构建过滤条件
             filters = {}
@@ -442,8 +445,30 @@ def register_knowledge_tools(app: FastMCP, knowledge_core) -> None:
             # 获取知识条目
             items = knowledge_core.list_knowledge_items(**filters)
 
-            # 将条目转换为字典
-            items_data = [item.to_dict() for item in items]
+            # 将条目转换为字典，根据 include_content 决定是否包含完整内容
+            if include_content:
+                items_data = [item.to_dict() for item in items]
+            else:
+                # 返回精简信息：仅包含 id、title、source_path、source_type、created_at、updated_at
+                items_data = []
+                for item in items:
+                    summary = {
+                        "id": item.id,
+                        "title": item.title,
+                        "source_path": item.source_path,
+                        "source_type": item.source_type.value if hasattr(item.source_type, 'value') else str(item.source_type),
+                        "created_at": item.created_at.isoformat() if hasattr(item.created_at, 'isoformat') else str(item.created_at),
+                        "updated_at": item.updated_at.isoformat() if hasattr(item.updated_at, 'isoformat') else str(item.updated_at),
+                        "categories": [{"id": c.id, "name": c.name} for c in item.categories] if item.categories else [],
+                        "tags": [{"id": t.id, "name": t.name} for t in item.tags] if item.tags else []
+                    }
+                    # 添加内容预览（前 200 个字符）
+                    if hasattr(item, 'content') and item.content:
+                        content_preview = item.content[:200]
+                        if len(item.content) > 200:
+                            content_preview += "..."
+                        summary["content_preview"] = content_preview
+                    items_data.append(summary)
 
             return _format_success_response(
                 f"Retrieved {len(items_data)} knowledge items",
@@ -452,6 +477,7 @@ def register_knowledge_tools(app: FastMCP, knowledge_core) -> None:
                     "count": len(items_data),
                     "limit": limit,
                     "offset": offset,
+                    "include_content": include_content,
                     "filters": {
                         "category": category if category else None,
                         "tag": tag if tag else None
