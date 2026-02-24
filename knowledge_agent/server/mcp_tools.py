@@ -839,7 +839,8 @@ def register_knowledge_tools(app: FastMCP, knowledge_core) -> None:
 
         Args:
             directory_path: 目标目录路径（必需）
-            file_pattern: 文件匹配模式（默认 "*" 匹配所有文件）
+            file_pattern: 文件匹配模式，支持逗号分隔的多个模式（默认 "*" 匹配所有文件）
+                         例如: "*.pdf" 或 "*.doc,*.docx,*.pdf"
             recursive: 是否递归扫描子目录（默认 False）
 
         Returns:

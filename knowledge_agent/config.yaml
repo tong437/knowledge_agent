@@ -81,5 +81,5 @@ performance:
 # Security Configuration
 security:
   enable_auth: false
-  allowed_paths: []  # Restrict file access to these paths
+  allowed_paths: ["D:/Documents", "D:/Projects"]  # 只允许访问这些目录
   blocked_extensions: [".exe", ".bat", ".sh", ".cmd"]

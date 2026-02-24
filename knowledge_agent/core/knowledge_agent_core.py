@@ -823,7 +823,8 @@ class KnowledgeAgentCore:
         
         Args:
             directory_path: 目录路径
-            file_pattern: 文件匹配模式（glob 格式）
+            file_pattern: 文件匹配模式（glob 格式），支持逗号分隔的多个模式
+                         例如: "*.pdf" 或 "*.doc,*.docx,*.pdf"
             recursive: 是否递归处理子目录
             
         Returns:
@@ -858,19 +859,25 @@ class KnowledgeAgentCore:
                 f"Directory does not exist: {directory_path}"
             )
         
-        # 使用 glob 或 rglob 匹配文件
-        if recursive:
-            matched_files = list(dir_path.rglob(file_pattern))
-        else:
-            matched_files = list(dir_path.glob(file_pattern))
+        # 支持多个模式（逗号分隔）
+        patterns = [p.strip() for p in file_pattern.split(',')]
+        matched_files = []
         
-        # 只处理文件，跳过目录
-        matched_files = [f for f in matched_files if f.is_file()]
+        for pattern in patterns:
+            # 使用 glob 或 rglob 匹配文件
+            if recursive:
+                matched_files.extend(dir_path.rglob(pattern))
+            else:
+                matched_files.extend(dir_path.glob(pattern))
+        
+        # 去重并只处理文件，跳过目录
+        matched_files = list(set([f for f in matched_files if f.is_file()]))
         
         success_count = 0
         failure_count = 0
         failed_files: List[str] = []
         errors: List[str] = []
+        collected_items: List[Dict[str, Any]] = []
         
         for file_path in matched_files:
             file_str = str(file_path)
@@ -891,8 +898,14 @@ class KnowledgeAgentCore:
                 )
                 
                 # 收集知识
-                self.collect_knowledge(source)
+                item = self.collect_knowledge(source)
                 success_count += 1
+                collected_items.append({
+                    "item_id": item.id,
+                    "title": item.title,
+                    "source_path": file_str,
+                    "source_type": source_type.value
+                })
                 
             except Exception as e:
                 # 单文件失败不中断整个流程
@@ -909,8 +922,9 @@ class KnowledgeAgentCore:
         return {
             "success_count": success_count,
             "failure_count": failure_count,
+            "total_count": len(matched_files),
             "failed_files": failed_files,
-            "errors": errors,
+            "collected_items": collected_items,
         }
     
     def get_statistics(self) -> Dict[str, Any]:
