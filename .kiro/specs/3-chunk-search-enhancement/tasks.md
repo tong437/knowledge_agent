@@ -108,8 +108,8 @@
 - [x] 7. 检查点 - 确保分块引擎和搜索索引扩展测试通过
   - 确保所有测试通过，如有问题请向用户确认。
 
-- [-] 8. 改造 SearchEngineImpl 实现两阶段搜索
-  - [-] 8.1 在 `knowledge_agent/search/search_engine_impl.py` 中实现两阶段搜索
+- [x] 8. 改造 SearchEngineImpl 实现两阶段搜索
+  - [x] 8.1 在 `knowledge_agent/search/search_engine_impl.py` 中实现两阶段搜索
     - 将现有 `search()` 方法的逻辑重命名为 `_item_search()`
     - 新增 `_chunk_search()` 方法实现两阶段搜索：
       - 阶段1：在分块索引上执行关键词搜索 + TF-IDF 语义搜索，合并分块结果
@@ -128,8 +128,8 @@
     - 测试分块索引为空时的行为
     - _需求：5.1, 5.2, 5.3, 5.4, 5.5, 7.2_
 
-- [ ] 9. 集成分块逻辑到 KnowledgeAgentCore
-  - [ ] 9.1 修改 `knowledge_agent/core/knowledge_agent_core.py`
+- [-] 9. 集成分块逻辑到 KnowledgeAgentCore
+  - [-] 9.1 修改 `knowledge_agent/core/knowledge_agent_core.py`
     - 在 `collect_knowledge()` 中：处理器生成 KnowledgeItem 后，调用 ContentChunker 分块，保存分块到存储层，更新分块索引
     - 在 `delete_knowledge_item()` 中：删除时同步清理分块索引（数据库级联删除自动清理存储层）
     - 在 `_initialize_components()` 中：初始化 ContentChunker，将 storage_manager 注入 SearchEngineImpl

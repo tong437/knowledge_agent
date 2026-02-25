@@ -56,6 +56,9 @@ class KnowledgeAgentCore:
         # 配置管理器
         self._config_manager: Optional[ConfigManager] = None
         
+        # 分块引擎
+        self._content_chunker = None
+        
         # 初始化状态
         self._initialized = False
         self._shutdown_requested = False
@@ -116,6 +119,15 @@ class KnowledgeAgentCore:
             self._search_engine = SearchEngineImpl(index_dir)
             self._registry.set_instance("search_engine", self._search_engine)
             self.logger.info(f"✓ Initialized search engine with index at {index_dir}")
+            
+            # 注入 storage_manager 到搜索引擎（用于分块搜索时获取完整条目和上下文）
+            if self._storage_manager and self._search_engine:
+                self._search_engine.set_storage_manager(self._storage_manager)
+            
+            # 初始化 ContentChunker
+            from ..chunking.content_chunker import ContentChunker
+            self._content_chunker = ContentChunker()
+            self.logger.info("Initialized ContentChunker")
             
             # 初始化数据处理器
             self._initialize_data_processors()
@@ -261,6 +273,23 @@ class KnowledgeAgentCore:
             if self._search_engine:
                 self._search_engine.update_index(item)
                 self.logger.info(f"✓ Updated search index for item: {item.id}")
+            
+            # 对文档内容进行分块
+            if self._content_chunker:
+                try:
+                    chunks = self._content_chunker.chunk(item.content, item.title)
+                    for chunk in chunks:
+                        chunk.item_id = item.id
+                    # 保存分块到存储层
+                    if self._storage_manager:
+                        self._storage_manager.save_chunks(item.id, chunks)
+                    # 更新分块索引
+                    if self._search_engine:
+                        self._search_engine.update_chunk_index(item.id, chunks)
+                    self.logger.info(f"Created {len(chunks)} chunks for item: {item.id}")
+                except Exception as chunk_err:
+                    # 分块失败不影响主流程
+                    self.logger.warning(f"Failed to chunk content for item {item.id}: {chunk_err}")
             
             self.logger.info(f"Successfully collected knowledge from: {source.path}")
             
@@ -446,6 +475,8 @@ class KnowledgeAgentCore:
                         "tags": [{"id": t.id, "name": t.name} for t in result.item.tags],
                         "relevance_score": result.relevance_score,
                         "matched_fields": result.matched_fields,
+                        "matched_chunks": [mc.to_dict() for mc in result.matched_chunks] if result.matched_chunks else [],
+                        "context_chunks": [cc.to_dict() for cc in result.context_chunks] if result.context_chunks else [],
                     }
                     for result in search_results.results
                 ],
@@ -802,6 +833,12 @@ class KnowledgeAgentCore:
                     self.logger.warning(
                         f"Failed to remove item from search index: {index_err}"
                     )
+                
+                try:
+                    self._search_engine.remove_chunks_from_index(item_id)
+                    self.logger.info(f"Removed chunk index for: {item_id}")
+                except Exception as chunk_idx_err:
+                    self.logger.warning(f"Failed to remove chunk index: {chunk_idx_err}")
             
             return success
             
@@ -1070,6 +1107,9 @@ class KnowledgeAgentCore:
                 error_msg = f"Failed to cleanup knowledge organizer: {e}"
                 self.logger.error(error_msg)
                 cleanup_errors.append(error_msg)
+        
+        # 清理分块引擎
+        self._content_chunker = None
         
         # 清理数据处理器
         if self._data_processors:
