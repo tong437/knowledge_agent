@@ -8,6 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
 from ..models import KnowledgeItem
+from ..models.knowledge_chunk import KnowledgeChunk
 
 
 class SemanticSearcher:
@@ -28,6 +29,16 @@ class SemanticSearcher:
         self.item_vectors = None
         self.items: List[KnowledgeItem] = []
         self.is_fitted = False
+        self.chunk_vectorizer = TfidfVectorizer(
+            max_features=1000,
+            stop_words='english',
+            ngram_range=(1, 2),
+            min_df=1,
+            max_df=0.8
+        )
+        self.chunk_vectors = None
+        self.chunks: List[KnowledgeChunk] = []
+        self.is_chunk_fitted: bool = False
     
     def fit(self, items: List[KnowledgeItem]) -> None:
         """
@@ -230,3 +241,82 @@ class SemanticSearcher:
             self.fit(self.items)
         else:
             self.is_fitted = False
+
+    def fit_chunks(self, chunks: List[KnowledgeChunk]) -> None:
+        """
+        对分块集合进行向量化拟合。
+
+        Args:
+            chunks: 待拟合的知识分块列表
+        """
+        if not chunks:
+            self.is_chunk_fitted = False
+            return
+
+        self.chunks = chunks
+        documents = [f"{chunk.heading} {chunk.content}" for chunk in chunks]
+
+        try:
+            self.chunk_vectors = self.chunk_vectorizer.fit_transform(documents)
+            self.is_chunk_fitted = True
+        except ValueError:
+            self.is_chunk_fitted = False
+
+    def search_chunks(
+        self,
+        query: str,
+        top_k: int = 10,
+        min_similarity: float = 0.05
+    ) -> List[Tuple[KnowledgeChunk, float]]:
+        """
+        在分块级别进行语义搜索。
+
+        Args:
+            query: 搜索查询字符串
+            top_k: 返回的最大结果数
+            min_similarity: 最低相似度阈值（0.0 到 1.0）
+
+        Returns:
+            按相关性排序的 (KnowledgeChunk, 相似度分数) 元组列表
+        """
+        if not self.is_chunk_fitted or not self.chunks:
+            return []
+
+        try:
+            query_vector = self.chunk_vectorizer.transform([query])
+            similarities = cosine_similarity(query_vector, self.chunk_vectors)[0]
+            valid_indices = np.where(similarities >= min_similarity)[0]
+            sorted_indices = valid_indices[np.argsort(-similarities[valid_indices])]
+
+            results = [
+                (self.chunks[idx], float(similarities[idx]))
+                for idx in sorted_indices[:top_k]
+            ]
+            return results
+        except Exception:
+            return []
+
+    def update_chunks_for_item(self, item_id: str, chunks: List[KnowledgeChunk]) -> None:
+        """
+        更新指定 item 的分块数据，移除旧分块后添加新分块并重新拟合。
+
+        Args:
+            item_id: 知识条目 ID
+            chunks: 新的分块列表
+        """
+        self.chunks = [c for c in self.chunks if c.item_id != item_id]
+        self.chunks.extend(chunks)
+        self.fit_chunks(self.chunks)
+
+    def remove_chunks_for_item(self, item_id: str) -> None:
+        """
+        移除指定 item 的所有分块并重新拟合。
+
+        Args:
+            item_id: 知识条目 ID
+        """
+        self.chunks = [c for c in self.chunks if c.item_id != item_id]
+        if self.chunks:
+            self.fit_chunks(self.chunks)
+        else:
+            self.is_chunk_fitted = False

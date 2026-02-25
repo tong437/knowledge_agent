@@ -2,6 +2,7 @@
 搜索引擎核心实现模块。
 """
 
+import logging
 import time
 from typing import List, Optional
 from ..interfaces import SearchEngine
@@ -11,9 +12,13 @@ from ..models import (
     SearchResults,
     SearchOptions
 )
+from ..models.search_result import MatchedChunk
+from ..models.knowledge_chunk import KnowledgeChunk
 from .search_index_manager import SearchIndexManager
 from .semantic_searcher import SemanticSearcher
 from .result_processor import ResultProcessor
+
+logger = logging.getLogger(__name__)
 
 
 class SearchEngineImpl(SearchEngine):
@@ -34,13 +39,17 @@ class SearchEngineImpl(SearchEngine):
         self.index_manager = SearchIndexManager(index_dir)
         self.semantic_searcher = SemanticSearcher()
         self.result_processor = ResultProcessor()
+        self.storage_manager = None
+
+    def set_storage_manager(self, storage_manager) -> None:
+        """注入存储管理器，用于分块搜索时获取完整条目和上下文分块。"""
+        self.storage_manager = storage_manager
 
     def search(self, query: str, options: SearchOptions) -> SearchResults:
         """
         执行搜索查询并返回结果。
 
-        结合关键词搜索（通过 Whoosh）和语义搜索（通过 TF-IDF）
-        以获得全面的搜索结果。
+        优先使用分块搜索（两阶段），分块索引不可用时降级为文档级搜索。
 
         Args:
             query: 搜索查询字符串
@@ -51,15 +60,39 @@ class SearchEngineImpl(SearchEngine):
         """
         start_time = time.time()
 
-        # 执行关键词搜索
+        # 优先尝试分块搜索
+        if self.index_manager.has_chunk_index() and self.storage_manager is not None:
+            try:
+                search_results = self._chunk_search(query, options)
+                search_results.search_time_ms = (time.time() - start_time) * 1000
+                return search_results
+            except Exception:
+                logger.warning("分块搜索失败，降级为文档级搜索")
+
+        # 降级为文档级搜索
+        search_results = self._item_search(query, options)
+        search_results.search_time_ms = (time.time() - start_time) * 1000
+        return search_results
+
+    def _item_search(self, query: str, options: SearchOptions) -> SearchResults:
+        """
+        文档级搜索（原有逻辑）。
+
+        结合关键词搜索和语义搜索，返回文档级别的搜索结果。
+
+        Args:
+            query: 搜索查询字符串
+            options: 搜索配置选项
+
+        Returns:
+            SearchResults: 包含元数据的结构化搜索结果
+        """
         keyword_results = self._keyword_search(query, options.max_results * 2)
 
-        # 如果模型已拟合，则执行语义搜索
         semantic_results = []
         if self.semantic_searcher.is_fitted:
             semantic_results = self._semantic_search(query, options.max_results * 2)
 
-        # 合并搜索结果
         if keyword_results and semantic_results:
             merged_results = self.result_processor.merge_results(
                 keyword_results,
@@ -74,13 +107,117 @@ class SearchEngineImpl(SearchEngine):
         else:
             merged_results = []
 
-        # 应用搜索选项（过滤、排序、分组）
         search_results = self.result_processor.apply_options(merged_results, options)
-
-        # 设置查询字符串和耗时
         search_results.query = query
-        search_results.search_time_ms = (time.time() - start_time) * 1000
+        return search_results
 
+    def _chunk_search(self, query: str, options: SearchOptions) -> SearchResults:
+        """
+        两阶段分块搜索。
+
+        阶段1：在分块索引上执行关键词搜索和语义搜索，合并分块结果。
+        阶段2：按 item_id 聚合，获取完整条目和上下文分块，构建搜索结果。
+
+        Args:
+            query: 搜索查询字符串
+            options: 搜索配置选项
+
+        Returns:
+            SearchResults: 包含 matched_chunks 和 context_chunks 的搜索结果
+        """
+        # 阶段1：分块级搜索
+        keyword_chunk_hits = self.index_manager.search_chunks(
+            query, limit=options.max_results * 3
+        )
+
+        semantic_chunk_hits = []
+        if self.semantic_searcher.is_chunk_fitted:
+            semantic_chunk_hits = self.semantic_searcher.search_chunks(
+                query, top_k=options.max_results * 3
+            )
+
+        # 合并分块结果（按 chunk_id 去重，取最高分）
+        chunk_scores = {}
+        for hit in keyword_chunk_hits:
+            cid = hit['chunk_id']
+            score = min(hit.get('score', 0) / 10.0, 1.0)
+            if cid not in chunk_scores or score > chunk_scores[cid][0]:
+                chunk_scores[cid] = (score, hit)
+
+        for chunk, sim in semantic_chunk_hits:
+            cid = chunk.id
+            if cid not in chunk_scores or sim > chunk_scores[cid][0]:
+                chunk_scores[cid] = (sim, {
+                    'chunk_id': chunk.id,
+                    'item_id': chunk.item_id,
+                    'chunk_index': chunk.chunk_index,
+                    'heading': chunk.heading,
+                    'content': chunk.content,
+                    'start_position': chunk.start_position,
+                    'end_position': chunk.end_position,
+                })
+
+        # 阶段2：按 item_id 聚合
+        item_chunks = {}
+        for cid, (score, info) in chunk_scores.items():
+            iid = info['item_id'] if isinstance(info, dict) else info.item_id
+            if iid not in item_chunks:
+                item_chunks[iid] = []
+            item_chunks[iid].append((score, info))
+
+        results = []
+        for item_id, scored_chunks in item_chunks.items():
+            item = self.storage_manager.get_knowledge_item(item_id)
+            if not item:
+                continue
+
+            best_score = max(s for s, _ in scored_chunks)
+
+            # 构建 matched_chunks
+            matched_chunks = []
+            for score, info in sorted(scored_chunks, key=lambda x: -x[0]):
+                mc = MatchedChunk(
+                    chunk_id=info['chunk_id'] if isinstance(info, dict) else info.id,
+                    content=info['content'] if isinstance(info, dict) else info.content,
+                    heading=info.get('heading', '') if isinstance(info, dict) else getattr(info, 'heading', ''),
+                    chunk_index=int(info.get('chunk_index', 0)) if isinstance(info, dict) else info.chunk_index,
+                    start_position=int(info.get('start_position', 0)) if isinstance(info, dict) else info.start_position,
+                    end_position=int(info.get('end_position', 0)) if isinstance(info, dict) else info.end_position,
+                    score=score
+                )
+                matched_chunks.append(mc)
+
+            # 加载上下文分块（匹配分块的相邻分块）
+            context_chunks = []
+            matched_chunk_ids = {m.chunk_id for m in matched_chunks}
+            context_chunk_ids = set()
+            for mc in matched_chunks:
+                adjacent = self.storage_manager.get_adjacent_chunks(item_id, mc.chunk_index)
+                for adj in adjacent:
+                    if adj.id not in matched_chunk_ids and adj.id not in context_chunk_ids:
+                        context_chunk_ids.add(adj.id)
+                        context_chunks.append(MatchedChunk(
+                            chunk_id=adj.id,
+                            content=adj.content,
+                            heading=adj.heading,
+                            chunk_index=adj.chunk_index,
+                            start_position=adj.start_position,
+                            end_position=adj.end_position,
+                            score=0.0
+                        ))
+
+            result = SearchResult(
+                item=item,
+                relevance_score=best_score,
+                matched_fields=['chunk_content'],
+                highlights=[],
+                matched_chunks=matched_chunks,
+                context_chunks=context_chunks
+            )
+            results.append(result)
+
+        search_results = self.result_processor.apply_options(results, options)
+        search_results.query = query
         return search_results
 
     def _keyword_search(
@@ -341,6 +478,40 @@ class SearchEngineImpl(SearchEngine):
         )
 
         return [item for item, _ in similar_results]
+
+    def update_chunk_index(self, item_id: str, chunks: List[KnowledgeChunk]) -> None:
+        """
+        更新指定条目的分块索引。
+
+        先移除旧分块，再添加新分块，同时更新语义搜索器。
+
+        Args:
+            item_id: 知识条目 ID
+            chunks: 新的分块列表
+        """
+        self.index_manager.remove_chunks_for_item(item_id)
+        self.index_manager.add_chunks(chunks)
+        self.semantic_searcher.update_chunks_for_item(item_id, chunks)
+
+    def remove_chunks_from_index(self, item_id: str) -> None:
+        """
+        从分块索引中移除指定条目的所有分块。
+
+        Args:
+            item_id: 知识条目 ID
+        """
+        self.index_manager.remove_chunks_for_item(item_id)
+        self.semantic_searcher.remove_chunks_for_item(item_id)
+
+    def rebuild_chunk_index(self, chunks: List[KnowledgeChunk]) -> None:
+        """
+        从头重建整个分块索引。
+
+        Args:
+            chunks: 所有分块列表
+        """
+        self.index_manager.rebuild_chunk_index(chunks)
+        self.semantic_searcher.fit_chunks(chunks)
 
     def close(self) -> None:
         """关闭搜索引擎并释放资源。"""
