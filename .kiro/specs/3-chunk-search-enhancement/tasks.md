@@ -74,8 +74,8 @@
     - 测试空内容和边界情况
     - _需求：2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10_
 
-- [-] 5. 扩展 SearchIndexManager 支持分块级 Whoosh 索引
-  - [-] 5.1 在 `knowledge_agent/search/search_index_manager.py` 中新增分块索引功能
+- [x] 5. 扩展 SearchIndexManager 支持分块级 Whoosh 索引
+  - [x] 5.1 在 `knowledge_agent/search/search_index_manager.py` 中新增分块索引功能
     - 定义分块索引 Schema（chunk_id、item_id、chunk_index、heading、content）
     - 分块索引存储在 `{index_dir}/chunks/` 子目录
     - 实现 `add_chunks(chunks)`：批量添加分块到索引
@@ -91,7 +91,7 @@
     - 测试 has_chunk_index 判断
     - _需求：4.1, 4.3, 4.4, 4.5_
 
-- [-] 6. 扩展 SemanticSearcher 支持分块级 TF-IDF
+- [x] 6. 扩展 SemanticSearcher 支持分块级 TF-IDF
   - [x] 6.1 在 `knowledge_agent/search/semantic_searcher.py` 中新增分块语义搜索功能
     - 新增属性：chunk_vectorizer、chunk_vectors、chunks 列表、is_chunk_fitted
     - 实现 `fit_chunks(chunks)`：对分块列表构建 TF-IDF 模型
@@ -105,11 +105,11 @@
     - 测试 update_chunks_for_item 和 remove_chunks_for_item
     - _需求：4.2_
 
-- [ ] 7. 检查点 - 确保分块引擎和搜索索引扩展测试通过
+- [x] 7. 检查点 - 确保分块引擎和搜索索引扩展测试通过
   - 确保所有测试通过，如有问题请向用户确认。
 
-- [ ] 8. 改造 SearchEngineImpl 实现两阶段搜索
-  - [ ] 8.1 在 `knowledge_agent/search/search_engine_impl.py` 中实现两阶段搜索
+- [-] 8. 改造 SearchEngineImpl 实现两阶段搜索
+  - [-] 8.1 在 `knowledge_agent/search/search_engine_impl.py` 中实现两阶段搜索
     - 将现有 `search()` 方法的逻辑重命名为 `_item_search()`
     - 新增 `_chunk_search()` 方法实现两阶段搜索：
       - 阶段1：在分块索引上执行关键词搜索 + TF-IDF 语义搜索，合并分块结果
