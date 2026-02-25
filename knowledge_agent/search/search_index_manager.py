@@ -5,7 +5,7 @@ Search index manager using Whoosh for full-text search.
 import os
 from typing import List, Optional
 from whoosh import index
-from whoosh.fields import Schema, TEXT, ID, DATETIME, KEYWORD
+from whoosh.fields import Schema, TEXT, ID, DATETIME, KEYWORD, NUMERIC
 from whoosh.qparser import MultifieldParser, QueryParser
 from whoosh.query import Query
 from whoosh.searching import Results
@@ -14,6 +14,7 @@ from whoosh.support.charset import accent_map
 from datetime import datetime
 
 from ..models import KnowledgeItem
+from ..models.knowledge_chunk import KnowledgeChunk
 
 
 class SearchIndexManager:
@@ -34,6 +35,10 @@ class SearchIndexManager:
         self.index_dir = index_dir
         self.schema = self._create_schema()
         self.ix = self._get_or_create_index()
+        # 分块索引相关属性
+        self.chunk_index_dir = os.path.join(index_dir, "chunks")
+        self.chunk_schema = self._create_chunk_schema()
+        self.chunk_ix = None
     
     def _create_schema(self) -> Schema:
         """
@@ -72,6 +77,127 @@ class SearchIndexManager:
             return index.open_dir(self.index_dir)
         else:
             return index.create_in(self.index_dir, self.schema)
+    
+    def _create_chunk_schema(self) -> Schema:
+        """创建分块索引的 Schema，复用与文档索引相同的 analyzer。"""
+        analyzer = RegexTokenizer(r"\w+") | LowercaseFilter() | CharsetFilter(accent_map)
+        return Schema(
+            chunk_id=ID(stored=True, unique=True),
+            item_id=ID(stored=True),
+            chunk_index=NUMERIC(stored=True),
+            heading=TEXT(stored=True, analyzer=analyzer),
+            content=TEXT(stored=True, analyzer=analyzer),
+        )
+    
+    def _get_or_create_chunk_index(self) -> index.Index:
+        """获取或创建分块索引，延迟初始化。"""
+        if self.chunk_ix is not None:
+            return self.chunk_ix
+        
+        if not os.path.exists(self.chunk_index_dir):
+            os.makedirs(self.chunk_index_dir)
+        
+        if index.exists_in(self.chunk_index_dir):
+            self.chunk_ix = index.open_dir(self.chunk_index_dir)
+        else:
+            self.chunk_ix = index.create_in(self.chunk_index_dir, self.chunk_schema)
+        
+        return self.chunk_ix
+    
+    def add_chunks(self, chunks: List[KnowledgeChunk]) -> None:
+        """批量添加分块到索引。"""
+        ix = self._get_or_create_chunk_index()
+        writer = ix.writer()
+        try:
+            for chunk in chunks:
+                writer.add_document(
+                    chunk_id=chunk.id,
+                    item_id=chunk.item_id,
+                    chunk_index=chunk.chunk_index,
+                    heading=chunk.heading,
+                    content=chunk.content,
+                )
+            writer.commit()
+        except Exception as e:
+            writer.cancel()
+            raise RuntimeError(f"Failed to add chunks to index: {e}")
+    
+    def remove_chunks_for_item(self, item_id: str) -> None:
+        """删除指定 item 的所有分块索引。"""
+        ix = self._get_or_create_chunk_index()
+        writer = ix.writer()
+        try:
+            writer.delete_by_term("item_id", item_id)
+            writer.commit()
+        except Exception as e:
+            writer.cancel()
+            raise RuntimeError(f"Failed to remove chunks from index: {e}")
+    
+    def search_chunks(self, query_str: str, limit: int = 50) -> List[dict]:
+        """
+        在分块索引上搜索。
+        
+        Args:
+            query_str: 搜索查询字符串
+            limit: 最大返回结果数
+            
+        Returns:
+            匹配结果列表，每项包含 score 和存储字段
+        """
+        ix = self._get_or_create_chunk_index()
+        with ix.searcher() as searcher:
+            from whoosh.qparser import OrGroup
+            parser = MultifieldParser(
+                ["heading", "content"], schema=self.chunk_schema, group=OrGroup
+            )
+            
+            terms = query_str.split()
+            wildcard_query = " OR ".join([f"*{term}*" for term in terms])
+            
+            try:
+                query = parser.parse(wildcard_query)
+            except:
+                query = parser.parse(query_str)
+            
+            results = searcher.search(query, limit=limit)
+            return [{'score': hit.score, **dict(hit)} for hit in results]
+    
+    def rebuild_chunk_index(self, chunks: List[KnowledgeChunk]) -> None:
+        """重建整个分块索引。"""
+        if self.chunk_ix is not None:
+            self.chunk_ix.close()
+            self.chunk_ix = None
+        
+        if not os.path.exists(self.chunk_index_dir):
+            os.makedirs(self.chunk_index_dir)
+        
+        self.chunk_ix = index.create_in(self.chunk_index_dir, self.chunk_schema)
+        
+        writer = self.chunk_ix.writer()
+        try:
+            for chunk in chunks:
+                writer.add_document(
+                    chunk_id=chunk.id,
+                    item_id=chunk.item_id,
+                    chunk_index=chunk.chunk_index,
+                    heading=chunk.heading,
+                    content=chunk.content,
+                )
+            writer.commit()
+        except Exception as e:
+            writer.cancel()
+            raise RuntimeError(f"Failed to rebuild chunk index: {e}")
+    
+    def has_chunk_index(self) -> bool:
+        """检查分块索引是否存在且有效。"""
+        if not os.path.exists(self.chunk_index_dir):
+            return False
+        try:
+            ix = index.open_dir(self.chunk_index_dir)
+            ix.close()
+            return True
+        except:
+            return False
     
     def add_item(self, item: KnowledgeItem) -> None:
         """
@@ -260,3 +386,6 @@ class SearchIndexManager:
         """Close the index."""
         if hasattr(self, 'ix') and self.ix is not None:
             self.ix.close()
+        if hasattr(self, 'chunk_ix') and self.chunk_ix is not None:
+            self.chunk_ix.close()
+            self.chunk_ix = None

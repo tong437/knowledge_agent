@@ -54,8 +54,8 @@
 - [x] 3. 检查点 - 确保数据模型和存储层测试通过
   - 确保所有测试通过，如有问题请向用户确认。
 
-- [-] 4. 实现 ContentChunker 分块引擎
-  - [-] 4.1 创建 `knowledge_agent/chunking/__init__.py` 和 `knowledge_agent/chunking/content_chunker.py`
+- [x] 4. 实现 ContentChunker 分块引擎
+  - [x] 4.1 创建 `knowledge_agent/chunking/__init__.py` 和 `knowledge_agent/chunking/content_chunker.py`
     - 实现 ChunkConfig dataclass（min_chunk_size=100, max_chunk_size=1500, overlap_ratio=0.2）
     - 实现 ContentChunker 类及 `chunk(content, title)` 主方法
     - 实现三级分块策略：`_split_by_headings`（Markdown # 标题）→ `_split_by_paragraphs`（双换行符）→ `_sliding_window_split`（超长文本二次切分）
@@ -74,8 +74,8 @@
     - 测试空内容和边界情况
     - _需求：2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10_
 
-- [ ] 5. 扩展 SearchIndexManager 支持分块级 Whoosh 索引
-  - [ ] 5.1 在 `knowledge_agent/search/search_index_manager.py` 中新增分块索引功能
+- [-] 5. 扩展 SearchIndexManager 支持分块级 Whoosh 索引
+  - [-] 5.1 在 `knowledge_agent/search/search_index_manager.py` 中新增分块索引功能
     - 定义分块索引 Schema（chunk_id、item_id、chunk_index、heading、content）
     - 分块索引存储在 `{index_dir}/chunks/` 子目录
     - 实现 `add_chunks(chunks)`：批量添加分块到索引
@@ -91,8 +91,8 @@
     - 测试 has_chunk_index 判断
     - _需求：4.1, 4.3, 4.4, 4.5_
 
-- [ ] 6. 扩展 SemanticSearcher 支持分块级 TF-IDF
-  - [ ] 6.1 在 `knowledge_agent/search/semantic_searcher.py` 中新增分块语义搜索功能
+- [-] 6. 扩展 SemanticSearcher 支持分块级 TF-IDF
+  - [x] 6.1 在 `knowledge_agent/search/semantic_searcher.py` 中新增分块语义搜索功能
     - 新增属性：chunk_vectorizer、chunk_vectors、chunks 列表、is_chunk_fitted
     - 实现 `fit_chunks(chunks)`：对分块列表构建 TF-IDF 模型
     - 实现 `search_chunks(query, top_k, min_similarity)`：分块级语义搜索
