@@ -128,8 +128,8 @@
     - 测试分块索引为空时的行为
     - _需求：5.1, 5.2, 5.3, 5.4, 5.5, 7.2_
 
-- [-] 9. 集成分块逻辑到 KnowledgeAgentCore
-  - [-] 9.1 修改 `knowledge_agent/core/knowledge_agent_core.py`
+- [x] 9. 集成分块逻辑到 KnowledgeAgentCore
+  - [x] 9.1 修改 `knowledge_agent/core/knowledge_agent_core.py`
     - 在 `collect_knowledge()` 中：处理器生成 KnowledgeItem 后，调用 ContentChunker 分块，保存分块到存储层，更新分块索引
     - 在 `delete_knowledge_item()` 中：删除时同步清理分块索引（数据库级联删除自动清理存储层）
     - 在 `_initialize_components()` 中：初始化 ContentChunker，将 storage_manager 注入 SearchEngineImpl
@@ -142,8 +142,8 @@
     - 测试分块失败时的降级处理（整个文档作为单分块）
     - _需求：3.1, 3.2, 3.3, 3.4, 7.1, 7.3_
 
-- [ ] 10. 扩展 MCP 工具层搜索结果格式
-  - [ ] 10.1 修改 `knowledge_agent/server/mcp_tools.py` 中的 search_knowledge 工具
+- [x] 10. 扩展 MCP 工具层搜索结果格式
+  - [x] 10.1 修改 `knowledge_agent/server/mcp_tools.py` 中的 search_knowledge 工具
     - 在搜索结果格式化中包含 matched_chunks 和 context_chunks 信息
     - 每个 matched_chunk 包含 chunk_id、content、heading、chunk_index、start_position、end_position
     - 保持向后兼容：matched_chunks 为空时不影响现有输出格式
@@ -154,7 +154,7 @@
     - 测试无分块时的向后兼容
     - _需求：6.1, 6.2, 6.3, 6.4_
 
-- [ ] 11. 最终检查点 - 确保所有测试通过
+- [x] 11. 最终检查点 - 确保所有测试通过
   - 运行完整测试套件，确保所有测试通过，如有问题请向用户确认。
 
 ## 说明
