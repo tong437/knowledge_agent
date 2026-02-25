@@ -11,6 +11,7 @@ from datetime import datetime
 
 from ..interfaces.storage_manager import StorageManager
 from ..models import KnowledgeItem, Category, Tag, Relationship, RelationshipType, SourceType
+from ..models.knowledge_chunk import KnowledgeChunk
 
 
 logger = logging.getLogger(__name__)
@@ -140,6 +141,29 @@ class SQLiteStorageManager(StorageManager):
                     FOREIGN KEY (knowledge_item_id) REFERENCES knowledge_items (id) ON DELETE CASCADE,
                     FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE
                 )
+            """)
+            
+            # 知识分块表
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS knowledge_chunks (
+                    id TEXT PRIMARY KEY,
+                    item_id TEXT NOT NULL,
+                    chunk_index INTEGER NOT NULL,
+                    content TEXT NOT NULL,
+                    heading TEXT NOT NULL DEFAULT '',
+                    start_position INTEGER NOT NULL,
+                    end_position INTEGER NOT NULL,
+                    metadata TEXT,
+                    FOREIGN KEY (item_id) REFERENCES knowledge_items (id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_chunks_item_id
+                ON knowledge_chunks (item_id)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_chunks_item_chunk
+                ON knowledge_chunks (item_id, chunk_index)
             """)
             
             conn.commit()
@@ -869,6 +893,110 @@ class SQLiteStorageManager(StorageManager):
             "issues": issues,
             "checked_at": datetime.now().isoformat()
         }
+
+    def save_chunks(self, item_id: str, chunks: List[KnowledgeChunk]) -> None:
+        """批量保存分块，先删除该 item_id 的旧分块再插入新分块。"""
+        with self._use_connection() as conn:
+            try:
+                conn.execute(
+                    "DELETE FROM knowledge_chunks WHERE item_id = ?", (item_id,)
+                )
+                conn.executemany(
+                    """
+                    INSERT INTO knowledge_chunks
+                    (id, item_id, chunk_index, content, heading,
+                     start_position, end_position, metadata)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            chunk.id,
+                            item_id,
+                            chunk.chunk_index,
+                            chunk.content,
+                            chunk.heading,
+                            chunk.start_position,
+                            chunk.end_position,
+                            json.dumps(chunk.metadata) if chunk.metadata else None,
+                        )
+                        for chunk in chunks
+                    ],
+                )
+                conn.commit()
+                logger.debug(f"已保存 {len(chunks)} 个分块，item_id: {item_id}")
+            except sqlite3.Error as e:
+                conn.rollback()
+                logger.error(f"保存分块失败 item_id={item_id}: {e}")
+                raise
+
+    def get_chunks_for_item(self, item_id: str) -> List[KnowledgeChunk]:
+        """按 chunk_index 排序返回指定条目的所有分块。"""
+        with self._use_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM knowledge_chunks WHERE item_id = ? ORDER BY chunk_index",
+                (item_id,),
+            )
+            return [
+                KnowledgeChunk(
+                    id=row["id"],
+                    item_id=row["item_id"],
+                    chunk_index=row["chunk_index"],
+                    content=row["content"],
+                    heading=row["heading"],
+                    start_position=row["start_position"],
+                    end_position=row["end_position"],
+                    metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+                )
+                for row in cursor.fetchall()
+            ]
+
+    def get_chunk_by_id(self, chunk_id: str) -> Optional[KnowledgeChunk]:
+        """根据 chunk_id 查询单个分块。"""
+        with self._use_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM knowledge_chunks WHERE id = ?", (chunk_id,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return KnowledgeChunk(
+                id=row["id"],
+                item_id=row["item_id"],
+                chunk_index=row["chunk_index"],
+                content=row["content"],
+                heading=row["heading"],
+                start_position=row["start_position"],
+                end_position=row["end_position"],
+                metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+            )
+
+    def get_adjacent_chunks(
+        self, item_id: str, chunk_index: int
+    ) -> List[KnowledgeChunk]:
+        """查询指定分块的前后相邻分块（chunk_index - 1 和 chunk_index + 1）。"""
+        with self._use_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM knowledge_chunks "
+                "WHERE item_id = ? AND chunk_index IN (?, ?) "
+                "ORDER BY chunk_index",
+                (item_id, chunk_index - 1, chunk_index + 1),
+            )
+            return [
+                KnowledgeChunk(
+                    id=row["id"],
+                    item_id=row["item_id"],
+                    chunk_index=row["chunk_index"],
+                    content=row["content"],
+                    heading=row["heading"],
+                    start_position=row["start_position"],
+                    end_position=row["end_position"],
+                    metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+                )
+                for row in cursor.fetchall()
+            ]
 
     def close(self) -> None:
         """Close the database connection (for persistent connections)."""

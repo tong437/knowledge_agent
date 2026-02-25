@@ -6,22 +6,22 @@
 
 ## 任务
 
-- [-] 1. 新增 KnowledgeChunk 数据模型和 MatchedChunk 模型
-  - [-] 1.1 创建 `knowledge_agent/models/knowledge_chunk.py`，实现 KnowledgeChunk dataclass
+- [x] 1. 新增 KnowledgeChunk 数据模型和 MatchedChunk 模型
+  - [x] 1.1 创建 `knowledge_agent/models/knowledge_chunk.py`，实现 KnowledgeChunk dataclass
     - 包含字段：id、item_id、chunk_index、content、heading、start_position、end_position、metadata
     - 实现 `to_dict()` 和 `from_dict()` 方法
     - id 默认使用 `uuid.uuid4()` 生成
     - metadata 默认为空字典
     - _需求：1.1, 1.5, 1.6_
 
-  - [ ] 1.2 扩展 `knowledge_agent/models/search_result.py`，新增 MatchedChunk dataclass
+  - [x] 1.2 扩展 `knowledge_agent/models/search_result.py`，新增 MatchedChunk dataclass
     - 包含字段：chunk_id、content、heading、chunk_index、start_position、end_position、score
     - 实现 `to_dict()` 方法
     - 在 SearchResult 中新增 `matched_chunks: List[MatchedChunk]` 和 `context_chunks: List[MatchedChunk]` 字段（默认空列表）
     - 扩展 SearchResult.to_dict() 包含新字段的序列化
     - _需求：6.1, 6.3, 6.4_
 
-  - [ ] 1.3 更新 `knowledge_agent/models/__init__.py`，导出 KnowledgeChunk 和 MatchedChunk
+  - [x] 1.3 更新 `knowledge_agent/models/__init__.py`，导出 KnowledgeChunk 和 MatchedChunk
     - _需求：1.1_
 
   - [ ]* 1.4 为 KnowledgeChunk 编写单元测试
@@ -29,15 +29,15 @@
     - 测试默认值和边界情况
     - _需求：1.5, 1.6_
 
-- [ ] 2. 扩展 SQLiteStorageManager 支持分块 CRUD
-  - [ ] 2.1 在 `knowledge_agent/storage/sqlite_storage.py` 的 `_init_database` 方法中新增 `knowledge_chunks` 表
+- [x] 2. 扩展 SQLiteStorageManager 支持分块 CRUD
+  - [x] 2.1 在 `knowledge_agent/storage/sqlite_storage.py` 的 `_init_database` 方法中新增 `knowledge_chunks` 表
     - 创建表结构：id、item_id、chunk_index、content、heading、start_position、end_position、metadata
     - 添加外键约束 `FOREIGN KEY (item_id) REFERENCES knowledge_items (id) ON DELETE CASCADE`
     - 创建索引 `idx_chunks_item_id` 和 `idx_chunks_item_chunk`
     - 确保启用 `PRAGMA foreign_keys = ON`
     - _需求：1.3, 1.4_
 
-  - [ ] 2.2 在 SQLiteStorageManager 中实现分块 CRUD 方法
+  - [x] 2.2 在 SQLiteStorageManager 中实现分块 CRUD 方法
     - `save_chunks(item_id, chunks)`：先删除旧分块再批量插入新分块
     - `get_chunks_for_item(item_id)`：按 chunk_index 排序返回
     - `get_chunk_by_id(chunk_id)`：根据 ID 查询单个分块
