@@ -10,7 +10,7 @@
     "knowledge-agent": {
       "command": "python",
       "args": [
-        "D:/Study/人工智能/结业项目/U2025011_莫XX_U20250222_张XX/YA_MCPServer_DeepReport/knowledge_agent_server.py",
+        "D:/Study/人工智能/结业项目/U202414876_刘奕彤_U202414867_方博涵_人工智能体作业/knowledge_agent_server/knowledge_agent_server.py",
         "--transport",
         "stdio",
         "--log-file",
@@ -18,7 +18,7 @@
         "--log-level",
         "INFO"
       ],
-      "cwd": "D:/Study/人工智能/结业项目/U2025011_莫XX_U20250222_张XX/YA_MCPServer_DeepReport"
+      "cwd": "D:/Study/人工智能/结业项目/U202414876_刘奕彤_U202414867_方博涵_人工智能体作业/knowledge_agent_server"
     }
   }
 }
@@ -28,7 +28,7 @@
 
 日志文件会保存在：
 ```
-D:/Study/人工智能/结业项目/U2025011_莫XX_U20250222_张XX/YA_MCPServer_DeepReport/logs/mcp_server.log
+D:/Study/人工智能/结业项目/U202414876_刘奕彤_U202414867_方博涵_人工智能体作业/knowledge_agent_server/logs/mcp_server.log
 ```
 
 ## 🔍 查看日志的方法
