@@ -8,6 +8,30 @@ from .knowledge_item import KnowledgeItem
 
 
 @dataclass
+class MatchedChunk:
+    """匹配到的知识块，包含块内容和匹配位置信息。"""
+
+    chunk_id: str
+    content: str
+    heading: str
+    chunk_index: int
+    start_position: int
+    end_position: int
+    score: float
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "chunk_id": self.chunk_id,
+            "content": self.content,
+            "heading": self.heading,
+            "chunk_index": self.chunk_index,
+            "start_position": self.start_position,
+            "end_position": self.end_position,
+            "score": self.score,
+        }
+
+
+@dataclass
 class SearchResult:
     """
     Represents a single search result.
@@ -20,6 +44,8 @@ class SearchResult:
     relevance_score: float
     matched_fields: List[str] = field(default_factory=list)
     highlights: List[str] = field(default_factory=list)
+    matched_chunks: List[MatchedChunk] = field(default_factory=list)
+    context_chunks: List[MatchedChunk] = field(default_factory=list)
     
     def __post_init__(self):
         """Validate the search result after initialization."""
@@ -28,12 +54,18 @@ class SearchResult:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert the search result to a dictionary."""
-        return {
+        result = {
             "item": self.item.to_dict(),
             "relevance_score": self.relevance_score,
             "matched_fields": self.matched_fields,
             "highlights": self.highlights,
         }
+        if self.matched_chunks:
+            result["matched_chunks"] = [c.to_dict() for c in self.matched_chunks]
+        if self.context_chunks:
+            result["context_chunks"] = [c.to_dict() for c in self.context_chunks]
+        return result
+
 
 
 @dataclass
