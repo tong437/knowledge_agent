@@ -51,11 +51,11 @@
     - 测试级联删除（删除 KnowledgeItem 后分块自动清理）
     - _需求：1.4, 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 3. 检查点 - 确保数据模型和存储层测试通过
+- [x] 3. 检查点 - 确保数据模型和存储层测试通过
   - 确保所有测试通过，如有问题请向用户确认。
 
-- [ ] 4. 实现 ContentChunker 分块引擎
-  - [ ] 4.1 创建 `knowledge_agent/chunking/__init__.py` 和 `knowledge_agent/chunking/content_chunker.py`
+- [-] 4. 实现 ContentChunker 分块引擎
+  - [-] 4.1 创建 `knowledge_agent/chunking/__init__.py` 和 `knowledge_agent/chunking/content_chunker.py`
     - 实现 ChunkConfig dataclass（min_chunk_size=100, max_chunk_size=1500, overlap_ratio=0.2）
     - 实现 ContentChunker 类及 `chunk(content, title)` 主方法
     - 实现三级分块策略：`_split_by_headings`（Markdown # 标题）→ `_split_by_paragraphs`（双换行符）→ `_sliding_window_split`（超长文本二次切分）
