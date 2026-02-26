@@ -25,6 +25,14 @@ from core.data_import_export import DataImportExport
 from core.source_type_detector import SourceTypeDetector
 from core.security_validator import SecurityValidator
 
+# 搜索结果内容大小控制常量
+MAX_CHUNK_CONTENT_SIZE = 1500       # 单分块最大字符数
+MAX_MATCHED_CHUNKS = 5              # 单结果最大匹配分块数
+MAX_CONTEXT_CHUNKS = 3              # 单结果最大上下文分块数
+MAX_RESULT_CONTENT_SIZE = 30000     # 单结果最大内容总字符数
+MAX_TOTAL_CONTENT_SIZE = 100000     # 所有结果最大内容总字符数
+CONTENT_TRUNCATION_THRESHOLD = 2000 # content 字段截断阈值
+
 
 class KnowledgeAgentCore:
     """
@@ -452,27 +460,78 @@ class KnowledgeAgentCore:
             # 执行搜索
             search_results = self._search_engine.search(query, search_options)
 
-            # 转换为字典格式
+            # 转换为字典格式，施加内容大小控制
+            result_items = []
+            total_content_size = 0
+
+            for result in search_results.results:
+                # 延迟分块恢复：检测缺失分块的大型知识项
+                matched_chunks_source = result.matched_chunks or []
+                if not matched_chunks_source and len(result.item.content) > CONTENT_TRUNCATION_THRESHOLD:
+                    matched_chunks_source = self._lazy_chunk_recovery(
+                        result.item, query
+                    )
+
+                # content 字段截断
+                content = result.item.content
+                if len(content) > CONTENT_TRUNCATION_THRESHOLD:
+                    content = content[:CONTENT_TRUNCATION_THRESHOLD] + "..."
+
+                result_content_size = len(content)
+
+                # 对 matched_chunks 施加数量限制和内容截断
+                truncated_matched = []
+                matched_source = matched_chunks_source[:MAX_MATCHED_CHUNKS]
+                for mc in matched_source:
+                    mc_dict = mc.to_dict()
+                    if len(mc_dict.get("content", "")) > MAX_CHUNK_CONTENT_SIZE:
+                        mc_dict["content"] = mc_dict["content"][:MAX_CHUNK_CONTENT_SIZE - 3] + "..."
+                    chunk_size = len(mc_dict.get("content", ""))
+                    # 单结果内容预算检查
+                    if result_content_size + chunk_size > MAX_RESULT_CONTENT_SIZE:
+                        break
+                    result_content_size += chunk_size
+                    truncated_matched.append(mc_dict)
+
+                # 对 context_chunks 施加数量限制和内容截断
+                truncated_context = []
+                context_source = result.context_chunks[:MAX_CONTEXT_CHUNKS] if result.context_chunks else []
+                for cc in context_source:
+                    cc_dict = cc.to_dict()
+                    if len(cc_dict.get("content", "")) > MAX_CHUNK_CONTENT_SIZE:
+                        cc_dict["content"] = cc_dict["content"][:MAX_CHUNK_CONTENT_SIZE - 3] + "..."
+                    chunk_size = len(cc_dict.get("content", ""))
+                    # 单结果内容预算检查
+                    if result_content_size + chunk_size > MAX_RESULT_CONTENT_SIZE:
+                        break
+                    result_content_size += chunk_size
+                    truncated_context.append(cc_dict)
+
+                # 所有结果总大小预算检查
+                if total_content_size + result_content_size > MAX_TOTAL_CONTENT_SIZE:
+                    break
+
+                total_content_size += result_content_size
+
+                result_items.append({
+                    "item_id": result.item.id,
+                    "title": result.item.title,
+                    "content": content,
+                    "source_type": result.item.source_type.value,
+                    "source_path": result.item.source_path,
+                    "categories": [{"id": c.id, "name": c.name} for c in result.item.categories],
+                    "tags": [{"id": t.id, "name": t.name} for t in result.item.tags],
+                    "relevance_score": result.relevance_score,
+                    "matched_fields": result.matched_fields,
+                    "matched_chunks": truncated_matched,
+                    "context_chunks": truncated_context,
+                })
+
             results_dict = {
                 "query": search_results.query,
                 "total_results": search_results.total_found,
                 "search_time_ms": search_results.search_time_ms,
-                "results": [
-                    {
-                        "item_id": result.item.id,
-                        "title": result.item.title,
-                        "content": result.item.content[:200] + "..." if len(result.item.content) > 200 else result.item.content,
-                        "source_type": result.item.source_type.value,
-                        "source_path": result.item.source_path,
-                        "categories": [{"id": c.id, "name": c.name} for c in result.item.categories],
-                        "tags": [{"id": t.id, "name": t.name} for t in result.item.tags],
-                        "relevance_score": result.relevance_score,
-                        "matched_fields": result.matched_fields,
-                        "matched_chunks": [mc.to_dict() for mc in result.matched_chunks] if result.matched_chunks else [],
-                        "context_chunks": [cc.to_dict() for cc in result.context_chunks] if result.context_chunks else [],
-                    }
-                    for result in search_results.results
-                ],
+                "results": result_items,
                 "grouped_results": search_results.grouped_results if search_results.grouped_results else {},
                 "suggestions": options.get("include_suggestions", False) and self._search_engine.suggest(query) or []
             }
@@ -484,6 +543,106 @@ class KnowledgeAgentCore:
         except Exception as e:
             self.logger.error(f"Error searching knowledge: {e}")
             raise KnowledgeAgentError(f"Failed to search knowledge: {e}")
+
+    def _lazy_chunk_recovery(
+        self, item: KnowledgeItem, query: str
+    ) -> list:
+        """
+        延迟分块恢复：对缺失分块的大型知识项进行即时分块。
+
+        优先尝试完整分块并持久化；若分块失败，则从原文中提取
+        包含查询关键词的片段作为降级方案。
+        """
+        from core.chunking.content_chunker import ContentChunker
+        from core.models.knowledge_chunk import KnowledgeChunk
+
+        # 尝试即时分块
+        try:
+            chunker = self._content_chunker or ContentChunker()
+            chunks = chunker.chunk(item.content, item.title)
+            if chunks:
+                for chunk in chunks:
+                    chunk.item_id = item.id
+                # 持久化到存储层和搜索索引
+                try:
+                    if self._storage_manager:
+                        self._storage_manager.save_chunks(item.id, chunks)
+                    if self._search_engine:
+                        self._search_engine.update_chunk_index(item.id, chunks)
+                    self.logger.info(
+                        f"延迟分块恢复成功，item_id={item.id}，生成 {len(chunks)} 个分块"
+                    )
+                except Exception as persist_err:
+                    # 持久化失败不影响本次搜索结果
+                    self.logger.warning(
+                        f"延迟分块持久化失败 item_id={item.id}: {persist_err}"
+                    )
+                return chunks
+        except Exception as chunk_err:
+            self.logger.warning(
+                f"延迟分块失败 item_id={item.id}: {chunk_err}"
+            )
+
+        # 降级：从原文中提取包含查询关键词的片段
+        return self._extract_keyword_snippets(item, query)
+
+    def _extract_keyword_snippets(
+        self, item: KnowledgeItem, query: str
+    ) -> list:
+        """
+        降级片段提取：从原文中提取包含查询关键词前后各约 500 字符的上下文。
+        """
+        from core.models.knowledge_chunk import KnowledgeChunk
+
+        content = item.content
+        keywords = query.strip().split()
+        if not keywords:
+            return []
+
+        snippets = []
+        seen_ranges = []
+        context_radius = 500
+
+        for keyword in keywords:
+            if not keyword:
+                continue
+            lower_content = content.lower()
+            lower_kw = keyword.lower()
+            pos = lower_content.find(lower_kw)
+            if pos == -1:
+                continue
+
+            start = max(0, pos - context_radius)
+            end = min(len(content), pos + len(keyword) + context_radius)
+
+            # 避免重叠片段
+            overlaps = False
+            for s, e in seen_ranges:
+                if start < e and end > s:
+                    overlaps = True
+                    break
+            if overlaps:
+                continue
+
+            seen_ranges.append((start, end))
+            snippet_text = content[start:end]
+            snippets.append(
+                KnowledgeChunk(
+                    item_id=item.id,
+                    chunk_index=len(snippets),
+                    content=snippet_text,
+                    heading=f"片段（关键词: {keyword}）",
+                    start_position=start,
+                    end_position=end,
+                )
+            )
+
+            if len(snippets) >= MAX_MATCHED_CHUNKS:
+                break
+
+        return snippets
+
+
 
     def get_knowledge_item(self, item_id: str) -> Optional[KnowledgeItem]:
         """

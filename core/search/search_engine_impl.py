@@ -24,6 +24,11 @@ from .result_processor import ResultProcessor
 
 logger = get_logger(__name__)
 
+# 单个知识项在分块搜索中返回的最大匹配分块数
+MAX_MATCHED_CHUNKS_PER_ITEM = 10
+# 单个知识项在分块搜索中返回的最大上下文分块数
+MAX_CONTEXT_CHUNKS_PER_ITEM = 6
+
 
 class SearchEngineImpl(SearchEngine):
     """
@@ -175,9 +180,11 @@ class SearchEngineImpl(SearchEngine):
 
             best_score = max(s for s, _ in scored_chunks)
 
-            # 构建 matched_chunks
+            # 构建 matched_chunks，按分数排序后只取前 N 个
             matched_chunks = []
             for score, info in sorted(scored_chunks, key=lambda x: -x[0]):
+                if len(matched_chunks) >= MAX_MATCHED_CHUNKS_PER_ITEM:
+                    break
                 mc = MatchedChunk(
                     chunk_id=info['chunk_id'] if isinstance(info, dict) else info.id,
                     content=info['content'] if isinstance(info, dict) else info.content,
@@ -189,13 +196,17 @@ class SearchEngineImpl(SearchEngine):
                 )
                 matched_chunks.append(mc)
 
-            # 加载上下文分块（匹配分块的相邻分块）
+            # 加载上下文分块（匹配分块的相邻分块），限制总数
             context_chunks = []
             matched_chunk_ids = {m.chunk_id for m in matched_chunks}
             context_chunk_ids = set()
             for mc in matched_chunks:
+                if len(context_chunks) >= MAX_CONTEXT_CHUNKS_PER_ITEM:
+                    break
                 adjacent = self.storage_manager.get_adjacent_chunks(item_id, mc.chunk_index)
                 for adj in adjacent:
+                    if len(context_chunks) >= MAX_CONTEXT_CHUNKS_PER_ITEM:
+                        break
                     if adj.id not in matched_chunk_ids and adj.id not in context_chunk_ids:
                         context_chunk_ids.add(adj.id)
                         context_chunks.append(MatchedChunk(
