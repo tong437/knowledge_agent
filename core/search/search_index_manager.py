@@ -14,9 +14,18 @@ from core.models import KnowledgeItem
 from core.models.knowledge_chunk import KnowledgeChunk
 
 
+
+
+# 尝试导入 jieba 分词库
+try:
+    import jieba
+    JIEBA_AVAILABLE = True
+except ImportError:
+    JIEBA_AVAILABLE = False
+
 class SearchIndexManager:
     """
-    使用 Whoosh 管理全文搜索索引。
+    使用 Whoosh 管理全文搜索索引。.
 
     提供创建、更新和查询知识条目搜索索引的功能。
     """
@@ -34,6 +43,62 @@ class SearchIndexManager:
         self.chunk_index_dir = os.path.join(index_dir, "chunks")
         self.chunk_schema = self._create_chunk_schema()
         self.chunk_ix = None
+
+    def _extract_query_terms(self, query_str: str) -> List[str]:
+        """
+        从查询字符串中提取搜索词项。
+
+        策略：
+        1. 保留原始查询（整体匹配）
+        2. 按空格分词（支持多词查询）
+        3. 使用 jieba 进行中文分词（智能识别词语边界）
+        4. 对长词进行 N-gram 分词（兜底策略）
+
+        Args:
+            query_str: 原始查询字符串
+
+        Returns:
+            提取的词项列表
+        """
+        terms = []
+
+        # 添加原始查询（整体匹配）
+        if query_str.strip():
+            terms.append(query_str.strip())
+
+        # 按空格分词
+        space_terms = query_str.split()
+        terms.extend(space_terms)
+
+        if JIEBA_AVAILABLE:
+            for term in space_terms:
+                if any('\u4e00' <= char <= '\u9fff' for char in term):
+                    seg_list = jieba.cut(term, cut_all=False)
+                    for seg in seg_list:
+                        if seg.strip() and len(seg) > 0:
+                            terms.append(seg)
+        else:
+            # jieba 不可用时降级为 N-gram 分词
+            for term in space_terms:
+                if any('\u4e00' <= char <= '\u9fff' for char in term):
+                    term_len = len(term)
+                    if term_len >= 2:
+                        for i in range(term_len - 1):
+                            terms.append(term[i:i+2])
+                    if term_len >= 3:
+                        for i in range(term_len - 2):
+                            terms.append(term[i:i+3])
+
+        # 去重并保持顺序
+        seen = set()
+        unique_terms = []
+        for term in terms:
+            if term and term not in seen:
+                seen.add(term)
+                unique_terms.append(term)
+
+        return unique_terms
+
 
     def _create_schema(self) -> Schema:
         """
@@ -148,7 +213,7 @@ class SearchIndexManager:
                 ["heading", "content"], schema=self.chunk_schema, group=OrGroup
             )
 
-            terms = query_str.split()
+            terms = self._extract_query_terms(query_str)
             wildcard_query = " OR ".join([f"*{term}*" for term in terms])
 
             try:
@@ -318,7 +383,7 @@ class SearchIndexManager:
         with self.ix.searcher() as searcher:
             parser = MultifieldParser(fields, schema=self.schema, group=OrGroup)
 
-            terms = query_str.split()
+            terms = self._extract_query_terms(query_str)
             wildcard_query = " OR ".join([f"*{term}*" for term in terms])
 
             try:
@@ -349,7 +414,7 @@ class SearchIndexManager:
         with self.ix.searcher() as searcher:
             parser = QueryParser(field, schema=self.schema)
 
-            terms = query_str.split()
+            terms = self._extract_query_terms(query_str)
             wildcard_query = " OR ".join([f"*{term}*" for term in terms])
 
             try:
