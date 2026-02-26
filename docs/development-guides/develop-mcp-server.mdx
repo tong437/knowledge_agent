@@ -1,0 +1,111 @@
+---
+title: 开发 MCP Server
+description: 介绍如何基于模板仓库开发你自己的 MCP 服务器。
+icon: server-cog
+---
+
+## 开发前提示
+
+在开发属于你自己的 **MCP Server** 之前，请确保已正确配置项目元数据
+
+---
+
+## 修改配置文件
+
+新建仓库后，请首先更新项目信息，确保与模板保持一致：
+
+- 修改 `config.yaml` 中的服务器名称、描述等元数据；
+- 修改 `pyproject.toml` 中的 `name`、`version`、`description` 字段，与 `config.yaml` 一致；
+- 修改 `README.md` 中的项目名称与描述，保持一致；
+- 服务器命名示例：`YA_MCPServer_XXXXX`
+
+**建议**：  
+保持三个文件（`config.yaml`、`pyproject.toml`、`README.md`）的项目信息同步，有助于测试脚本自动识别服务器元数据。
+
+---
+
+## 创建开发分支
+
+### 创建开发分支
+
+**禁止直接在 `main` 分支上提交代码**，推荐使用以下分支策略：
+
+| 分支名         | 作用               |
+| ----------- | ---------------- |
+| `main`      | 稳定发布版本，仅通过合并请求更新 |
+| `dev`       | 日常开发主线           |
+| `feature-*` | 新功能开发分支          |
+| `fix-*`     | Bug 修复分支         |
+
+从 `main` 分支创建新的开发分支（例如 `dev` 或 `feature-xyz`）：
+
+```bash
+# 创建 dev 分支并切换
+git checkout -b dev main
+```
+
+功能开发完成后，请推送分支并创建合并请求进行审查。
+
+---
+
+## 安装依赖并运行
+
+### 创建并激活虚拟环境
+
+**Windows：**
+
+```powershell
+# 创建虚拟环境并安装 pyproject.toml 中的依赖
+uv sync
+
+# 激活虚拟环境
+.venv\Scripts\activate
+```
+
+**Linux / macOS：**
+
+```bash
+# 创建虚拟环境并安装 pyproject.toml 中的依赖
+uv sync
+
+# 激活虚拟环境
+source .venv/bin/activate
+```
+
+### 运行 Template 代码
+
+在项目根目录下运行：
+
+```bash
+uv run server.py
+```
+
+---
+
+## 开发规范
+
+### 代码规范
+
+模板仓库内置了 lint 与格式化工具配置，建议严格遵守：
+
+```bash
+# 检查所有文件的规范与潜在问题
+uv run ruff check .
+
+# 自动修复 Ruff 可处理的问题
+uv run ruff check . --fix
+
+# 检查代码格式（不会修改文件）
+uv run black --check .
+
+# 自动格式化所有 Python 文件
+uv run black .
+```
+
+### 新增模块要求
+
+新增模块需满足以下要求：
+
+* 包含模块级 docstring；
+* 提供完整的类型注解；
+* 编写基本单元测试（位于 `tests/` 目录中）。

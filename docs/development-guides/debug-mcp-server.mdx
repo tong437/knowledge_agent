@@ -1,0 +1,94 @@
+---
+title: 调试 MCP Server
+description: 介绍如何调试和排查 MCP 服务器中的常见问题。
+---
+
+## 通过 MCP Inspector
+
+### Stdio 模式
+
+#### 1. 激活虚拟环境
+
+在终端中执行以下命令激活虚拟环境：
+
+**Windows**
+```powershell
+.venv\Scripts\activate
+````
+
+**Linux & MacOS**
+
+```bash
+source .venv/bin/activate
+```
+
+#### 2. 启动 MCP Inspector
+
+在终端中执行以下命令启动 MCP Inspector：
+
+```bash
+mcp dev server.py
+```
+
+#### 3. 选择 transport 类型
+
+在 Inspector 页面中，选择 `transport` 类型为 **stdio**，然后单击 **Connect** 按钮连接。
+
+> 选择 `stdio` 模式时，MCP 会自动启动对应的服务进程，因此无需手动运行服务端。
+
+#### 4. 查看与调用工具
+
+连接成功后，可在右侧面板查看已注册的资源和工具，直接调用工具并查看返回结果。
+
+---
+
+### SSE 模式
+
+#### 1. 激活虚拟环境
+
+在终端中执行以下命令激活虚拟环境：
+
+**Windows**
+
+```powershell
+.venv\Scripts\activate
+```
+
+**Linux & MacOS**
+
+```bash
+source .venv/bin/activate
+```
+
+#### 2. 启动 MCP Inspector
+
+在终端中执行以下命令启动 MCP Inspector：
+
+```bash
+mcp dev server.py
+```
+
+#### 3. 修改配置并启动服务端
+
+编辑 `config.yaml`，将 `transport` 类型修改为 `sse`，然后在终端运行以启动 MCP Server：
+
+```bash
+uv run server.py
+```
+
+#### 4. 连接到 SSE 服务
+
+在 MCP Inspector 页面中，选择 `transport` 类型为 **sse**，并输入服务器地址（例如 `http://127.0.0.1:12345`），单击 **Connect** 按钮，等待连接成功。
+
+> 使用 `sse` 模式时，需手动启动服务端并确保端口配置正确。
+
+---
+
+## 通过第三方应用
+
+除 MCP Inspector 外，还可以通过以下客户端连接和调试 MCP Server：
+
+| 工具                    | 说明                                    |
+| --------------------- | ------------------------------------- |
+| **VSCode - Cline 插件** | 支持直接连接 MCP Server，可在编辑器内调用工具或查看上下文资源。 |
+| **Claude Desktop**    | 支持本地 MCP 集成，可用于测试模型与服务器的实际交互行为。       |

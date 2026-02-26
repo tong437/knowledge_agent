@@ -1,0 +1,202 @@
+---
+title: Node.js
+description: 在开始项目开发之前，确保你已经安装并配置好了 Node.js 运行环境。
+---
+
+## 什么是 Node.js
+
+- **Node.js** 是一个基于 [V8 引擎](https://v8.dev/) 的 **JavaScript 运行时环境**，允许开发者在 **服务器端运行 JavaScript**
+- 它是现代 Web 开发的基础之一，被广泛用于构建前端工具链（如 Vite、Next.js）和后端服务（如 Express、NestJS）
+- 用于调试 MCP Server 的工具 MCP Inspector 也依赖 Node.js 环境，因此在开发 MCP Server 时需要先安装 Node.js
+
+---
+
+## 系统要求
+
+**最低要求：**
+
+- **操作系统**：macOS / Linux / Windows  
+- **Node.js 版本**：建议使用 **LTS（长期支持版）**  
+- **npm / pnpm / yarn**：Node.js 自带 npm，也可安装更快的包管理器 pnpm
+
+---
+
+## 安装 Node.js
+
+### 1. 检查是否已安装
+
+执行：
+
+```bash
+node -v
+npm -v
+````
+
+若显示版本号（如 `v20.10.0`、`10.5.0`），则说明已安装。
+
+### 2. 安装 Node.js
+
+根据系统平台选择安装方式。
+
+#### Windows
+
+**使用官方安装包（推荐）**
+
+从 [Node.js 官方网站](https://nodejs.org/zh-cn/download) 下载 **LTS** 版本（选择 `Windows 安装程序 (.msi)`）并运行安装向导。
+安装时请勾选 “Add to PATH”。
+
+或使用 WinGet：
+
+```powershell
+winget install OpenJS.NodeJS.LTS
+```
+
+或使用 Scoop：
+
+```powershell
+scoop install nodejs-lts
+```
+
+#### Linux
+
+**使用 NodeSource（推荐）：**
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+或使用系统包管理器：
+
+```bash
+sudo apt install nodejs npm -y
+```
+
+#### macOS
+
+**使用 Homebrew（推荐）：**
+
+```bash
+brew install node
+```
+
+或通过官方安装包安装：
+[https://nodejs.org/zh-cn/download](https://nodejs.org/zh-cn/download)
+
+**使用 nvm 管理多个版本（推荐）：**
+
+```bash
+brew install nvm
+mkdir ~/.nvm
+echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.bashrc
+echo '[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"' >> ~/.bashrc
+source ~/.bashrc
+nvm install --lts
+```
+
+### 3. 验证安装结果
+
+```bash
+node -v
+npm -v
+```
+
+若均能输出版本号，则安装成功。
+
+---
+
+## 包管理器配置（可选）
+
+Node.js 默认附带 **npm**，也可选择其他包管理器：
+
+| 工具           | 介绍             | 安装方式                                |
+| ------------ | -------------- | ----------------------------------- |
+| **npm**      | Node.js 默认包管理器 | 随 Node.js 一起安装                      |
+| **pnpm**     | 高性能、节省磁盘空间     | `npm install -g pnpm`               |
+| **yarn**     | 经典替代方案         | `npm install -g yarn`               |
+| **corepack** | 官方包管理桥接工具      | Node.js 16+ 内置，启用：`corepack enable` |
+
+---
+
+## 创建与运行项目（可选）
+
+### 初始化项目
+
+```bash
+mkdir my-node-app
+cd my-node-app
+npm init -y
+```
+
+### 安装依赖
+
+```bash
+npm install express
+```
+
+### 编写简单示例
+
+创建 `index.js`：
+
+```js
+import express from "express";
+const app = express();
+
+app.get("/", (req, res) => {
+  res.send("Hello Node.js!");
+});
+
+app.listen(3000, () =>
+  console.log("Server running at http://localhost:3000")
+);
+```
+
+### 运行项目
+
+```bash
+node index.js
+```
+
+在浏览器中访问：[http://localhost:3000](http://localhost:3000)
+
+---
+
+## 常用命令速览
+
+| 命令                    | 说明              |
+| --------------------- | --------------- |
+| `node -v`             | 查看 Node.js 版本   |
+| `npm -v`              | 查看 npm 版本       |
+| `npm init`            | 初始化项目           |
+| `npm install <pkg>`   | 安装依赖            |
+| `npm uninstall <pkg>` | 卸载依赖            |
+| `npm run <script>`    | 执行脚本            |
+| `npm update`          | 更新依赖            |
+| `npx <command>`       | 临时执行命令          |
+| `nvm install <ver>`   | 安装指定 Node.js 版本 |
+| `nvm use <ver>`       | 切换 Node.js 版本   |
+| `corepack enable`     | 启用 pnpm / yarn  |
+
+---
+
+## 常见问题
+
+### 命令未找到（node / npm not found）
+
+若安装完成后命令无法识别，请重启终端或检查环境变量 PATH 是否包含 Node.js 安装目录。
+Windows 用户请确认安装时勾选了 “Add to PATH”。
+
+### 版本过旧或冲突
+
+若系统中存在多个 Node.js 版本，建议使用 **nvm** 统一管理：
+
+```bash
+nvm install --lts
+nvm use --lts
+```
+
+### 更多参考
+
+* Node.js 官方文档：[https://nodejs.org/en/docs](https://nodejs.org/en/docs)
+* npm 官方文档：[https://docs.npmjs.com/](https://docs.npmjs.com/)
+* pnpm 官方文档：[https://pnpm.io/](https://pnpm.io/)

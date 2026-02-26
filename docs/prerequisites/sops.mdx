@@ -1,0 +1,142 @@
+````markdown
+---
+title: "SOPS"
+description: 如果你需要管理密钥、数据库密码等敏感信息，请在开始项目开发之前，确保你已经安装并配置好了 SOPS 运行环境。
+---
+
+## 什么是 SOPS
+
+- **SOPS**（Secrets OPerationS）是由 Mozilla 开发的 **安全加密工具**，用于管理敏感信息（如 API 密钥、数据库密码）
+- 支持加密 YAML、JSON、ENV 等格式文件，并可与 Git 集成，实现版本控制下的安全存储
+- 可以与多种加密后端配合使用，包括 **PGP**、**KMS** 和 **Age**
+
+---
+
+## 什么是 Age
+
+- **Age** 是一个现代化、轻量级的加密工具，常被 SOPS 用作加密后端
+- 使用公钥/私钥非对称加密，保证只有持有私钥的人才能解密文件
+- 特点：
+  - 简单易用，命令行友好
+  - 跨平台，文件和密钥管理简单
+  - 与 SOPS 高度兼容
+
+---
+
+## 系统要求
+
+> **最低要求**
+>
+> - **操作系统**：macOS / Linux / Windows  
+> - **SOPS 版本**：建议使用最新稳定版  
+> - **Age 版本**：建议使用最新稳定版
+
+---
+
+## 安装 SOPS 与 Age
+
+### 1. 检查是否已安装
+
+```bash
+sops --version
+age --version
+````
+
+若显示版本号，则说明已安装。
+
+---
+
+### 2. 克隆 `YA_Secrets` 仓库
+
+```bash
+git clone --recursive ssh://git@222.20.98.63:3001/YA/YA_Secrets.git
+cd YA_Secrets
+```
+
+---
+
+### 3. 根据系统平台运行安装脚本
+
+**Windows（PowerShell，管理员模式）：**
+
+```powershell
+.\windows.setup.ps1
+```
+
+**Linux / macOS：**
+
+```bash
+bash linux-macos.setup.sh
+```
+
+---
+
+### 4. 生成 Age 密钥对
+
+**Windows（PowerShell，管理员模式）：**
+
+```powershell
+.\windows.generate-age-key.ps1
+```
+
+**Linux / macOS：**
+
+```bash
+bash linux-macos.generate-age-key.sh
+```
+
+* 密钥会被保存至用户目录下的 `.config\sops\keys\age.key` 文件中
+* 请妥善保管该私钥文件，不要泄露给他人
+
+---
+
+### 5. 验证安装
+
+```bash
+sops --version
+age --version
+```
+
+若均能显示版本号，则说明安装成功。
+
+---
+
+## SOPS 工作原理
+
+SOPS 的核心目标是 **在版本控制下安全管理敏感信息**。它通过加密文件内容，而不是 Git 仓库本身，实现多人协作时的数据安全。
+
+### 工作原理概览
+
+* SOPS 会对整个文件或指定字段进行加密（如 YAML 的 `secrets` 字段）
+* 支持多种加密后端（PGP、KMS、Age），使用非对称加密
+* 文件被加密后提交到 Git 仓库，即使他人有仓库访问权限，也无法直接查看明文
+* 每个人只需要自己的私钥即可解密，同时可以共享公钥用于加密
+* 只要他人使用你的公钥加密了内容，就相当于你拥有了该内容的查看权限
+
+### 管理员公钥说明
+
+> 管理员公钥**允许管理员解密所有加密文件**，便于审核和管理。
+> 在 `YA_Secrets` 仓库下的 `.sops.yaml` 文件中已经存在的 `age` 公钥即为管理员的公钥。
+
+---
+
+## 常见问题
+
+> **命令未找到**
+>
+> 若执行 `sops` 或 `age` 命令提示未找到，请检查 PATH 环境变量是否包含安装目录，并尝试重启终端。
+
+> **Age 密钥管理**
+>
+> * 请妥善保管私钥 `age.key`，丢失将无法解密文件。
+
+> **更多参考**
+>
+> * SOPS 官方文档：[https://github.com/getsops/sops](https://github.com/getsops/sops)
+> * Age 官方文档：[https://github.com/FiloSottile/age](https://github.com/FiloSottile/age)
+
+---
+
+## 下一步
+
+完成 SOPS 与 Age 的安装与配置后，即可开始在项目中使用 SOPS 管理和加密敏感信息。

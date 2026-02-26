@@ -1,0 +1,10 @@
+[project]
+name = "ya-secrets"
+version = "0.1.0"
+description = "YA Secrets Module"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "colorlog>=6.10.1",
+    "pyyaml>=6.0.3",
+]

@@ -1,0 +1,6 @@
+[submodule "modules/YA_Common"]
+	path = modules/YA_Common
+	url = ssh://git@222.20.98.63:3001/YA/YA_Common.git
+[submodule "modules/YA_Secrets"]
+	path = modules/YA_Secrets
+	url = ssh://git@222.20.98.63:3001/YA/YA_Secrets.git

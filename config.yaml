@@ -1,0 +1,39 @@
+server:
+  name: personal-knowledge-agent
+  name_zh: 个人知识管理智能体
+  author: Student
+  description: Personal Knowledge Management MCP Server
+  description_zh: 个人知识管理 MCP 服务器
+  version: 0.1.0
+
+transport:
+  type: "sse"
+  host: "127.0.0.1"
+  port: 12345
+
+logging:
+  console:
+    enabled: true
+    level: "DEBUG"
+  file:
+    enabled: true
+    level: "DEBUG"
+    path: "logs/%Y-%m-%d_%H-%M-%S.log"
+    rotation: "10 MB"
+    retention: "7 days"
+    compression: "zip"
+
+knowledge:
+  storage:
+    type: sqlite
+    path: knowledge_agent.db
+  search:
+    index_dir: search_index
+    min_relevance: 0.1
+    max_results: 50
+  security:
+    allowed_paths: []
+    blocked_extensions:
+      - .exe
+      - .dll
+      - .so

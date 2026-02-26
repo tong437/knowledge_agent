@@ -1,0 +1,174 @@
+---
+title: uv
+description: 在开始项目开发之前，确保你已经安装并配置好了 uv 工具（轻量的 Python 包与环境管理器）。
+---
+
+## 什么是 uv
+
+- **uv** 是由 [Astral](https://astral.sh) 团队开发的下一代 Python 包与环境管理工具  
+- 核心特性是 **速度快、跨平台、零配置**
+- **uv** 融合了虚拟环境、依赖解析与包安装的完整流程，目标是取代传统的  
+  `pip + venv + requirements.txt` 或 `conda + environment.yml` 的复杂组合
+
+### 核心特性
+
+- 高速安装：基于 Rust 实现，依赖解析和安装速度远超 pip  
+- 统一管理：同时处理虚拟环境与依赖，无需多工具配合  
+- 多版本共存：支持项目级 Python 版本控制与自动匹配  
+- 智能缓存：重复安装时直接复用缓存内容  
+- 跨平台兼容：完整支持 macOS、Linux、Windows
+
+### 与其他工具对比
+
+| 功能 | uv | pip + venv | conda / miniconda |
+|------|----|------------|-------------------|
+| 安装速度 | 极快（Rust 实现） | 较慢 | 一般 |
+| 虚拟环境 | 内置支持 | 需手动创建 | 内置支持 |
+| 依赖锁定 | 内置 `uv.lock` | 无锁文件机制 | `environment.yml` |
+| 跨平台兼容性 | 高 | 高 | 一般（Windows 兼容性较差） |
+| 二进制依赖管理 | 支持 | 不支持 | 支持 |
+| 生态集成 | 与 Poetry、PDM 等兼容 | 原生 pip 生态 | 独立生态 |
+
+---
+
+## 系统要求
+
+- **Python** ≥ 3.11  
+- **操作系统**：macOS / Linux / Windows  
+- 推荐使用 **最新版本的 uv** 以获得最佳兼容性
+
+---
+
+## 安装步骤
+
+### 1. 检查 Python 环境
+
+确认系统中已安装 Python：
+
+```bash
+python3 --version
+````
+
+### 2. 安装 uv
+
+#### Windows
+
+使用官方安装脚本（推荐）：
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+或使用 Scoop：
+
+```powershell
+scoop install main/uv
+```
+
+或使用 WinGet：
+
+```powershell
+winget install --id=astral-sh.uv -e
+```
+
+#### Linux
+
+使用官方安装脚本（推荐）：
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+如果系统没有 `curl`，可以使用：
+
+```bash
+wget -qO- https://astral.sh/uv/install.sh | sh
+```
+
+#### macOS
+
+使用官方安装脚本（推荐）：
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+或使用 Homebrew：
+
+```bash
+brew install uv
+```
+
+如果尚未安装 Homebrew，可先执行：
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+### 3. 验证安装
+
+重新启动终端或 VS Code 后，执行：
+
+```bash
+uv --version
+```
+
+若能正常显示版本号，则说明安装成功。
+
+---
+
+## 环境验证
+
+### 创建项目与虚拟环境
+
+```bash
+uv init myproject
+cd myproject
+```
+
+### 安装依赖
+
+```bash
+uv add requests
+```
+
+### 运行项目
+
+```bash
+uv run main.py
+```
+
+---
+
+## 常用命令速览
+
+| 命令                            | 说明                |
+| ----------------------------- | ----------------- |
+| `uv init <project>`           | 初始化一个新的项目并创建虚拟环境  |
+| `uv add <package>`            | 安装依赖并更新 `uv.lock` |
+| `uv remove <package>`         | 移除指定依赖包           |
+| `uv sync`                     | 根据锁文件同步依赖环境       |
+| `uv run <script>`             | 在虚拟环境中运行脚本或命令     |
+| `uv lock`                     | 生成或更新依赖锁文件        |
+| `uv tree`                     | 查看依赖树             |
+| `uv list`                     | 列出已安装的包           |
+| `uv python install <version>` | 安装指定版本的 Python    |
+| `uv python list`              | 查看可用的 Python 版本   |
+| `uv cache clean`              | 清理依赖缓存            |
+| `uv upgrade`                  | 升级 uv 到最新版本       |
+
+---
+
+## 常见问题
+
+### 命令未找到（command not found）
+
+如果安装后执行 `uv` 提示命令未找到，请尝试：
+
+* 重启终端
+* 确认 uv 的安装路径已加入系统 `PATH`
+
+### 参考文档
+
+官方文档：
+[https://docs.astral.sh/uv](https://docs.astral.sh/uv)
