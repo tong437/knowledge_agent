@@ -1,0 +1,1266 @@
+"""
+知识管理智能体核心实现模块。
+"""
+
+from modules.YA_Common.utils.logger import get_logger
+from pathlib import Path
+from typing import Dict, Any, List, Optional
+from core.models import KnowledgeItem, DataSource, Category, Tag, Relationship, SourceType
+from core.interfaces import DataSourceProcessor, KnowledgeOrganizer, SearchEngine, StorageManager
+from core.storage import SQLiteStorageManager
+from core.organizers import KnowledgeOrganizerImpl
+from core.search import SearchEngineImpl
+from core.processors import DocumentProcessor, PDFProcessor, CodeProcessor, WebProcessor
+from core.exceptions import KnowledgeAgentError, ConfigurationError
+from core.monitoring import (
+    monitor_performance,
+    track_errors,
+    performance_context,
+    get_performance_monitor,
+    get_error_tracker
+)
+from core.component_registry import get_component_registry, ComponentRegistry
+from core.config_manager import get_config_manager, ConfigManager
+from core.data_import_export import DataImportExport
+from core.source_type_detector import SourceTypeDetector
+from core.security_validator import SecurityValidator
+
+# 搜索结果内容大小控制常量
+MAX_CHUNK_CONTENT_SIZE = 1500       # 单分块最大字符数
+MAX_MATCHED_CHUNKS = 5              # 单结果最大匹配分块数
+MAX_CONTEXT_CHUNKS = 3              # 单结果最大上下文分块数
+MAX_RESULT_CONTENT_SIZE = 30000     # 单结果最大内容总字符数
+MAX_TOTAL_CONTENT_SIZE = 100000     # 所有结果最大内容总字符数
+CONTENT_TRUNCATION_THRESHOLD = 2000 # content 字段截断阈值
+
+
+class KnowledgeAgentCore:
+    """
+    个人知识管理智能体核心实现。
+
+    协调各组件之间的交互，提供统一的知识管理功能。
+    """
+
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        """
+        初始化知识管理智能体核心。
+
+        Args:
+            config: 配置字典（可选）
+        """
+        self.logger = get_logger("core.knowledge_agent_core")
+        self.config = config or {}
+
+        # 组件实例
+        self._storage_manager: Optional[StorageManager] = None
+        self._data_processors: Dict[str, DataSourceProcessor] = {}
+        self._knowledge_organizer: Optional[KnowledgeOrganizer] = None
+        self._search_engine: Optional[SearchEngine] = None
+        self._data_import_export: Optional[DataImportExport] = None
+
+        # 组件注册表，用于依赖注入
+        self._registry: ComponentRegistry = get_component_registry()
+
+        # 配置管理器
+        self._config_manager: Optional[ConfigManager] = None
+
+        # 分块引擎
+        self._content_chunker = None
+
+        # 初始化状态
+        self._initialized = False
+        self._shutdown_requested = False
+
+        # 初始化组件
+        self._initialize_components()
+
+        self._initialized = True
+        self.logger.info("Knowledge agent core initialized successfully")
+
+    def _initialize_components(self) -> None:
+        """根据配置初始化核心组件。"""
+        try:
+            self.logger.info("Starting component initialization...")
+
+            # 如果提供了配置文件路径，则初始化配置管理器
+            config_path = self.config.get("config_path")
+            if config_path:
+                self._config_manager = get_config_manager(config_path)
+                self.logger.info(f"Loaded configuration from {config_path}")
+                # 将加载的配置与提供的配置合并
+                loaded_config = self._config_manager.get_config()
+                if not self.config.get("storage"):
+                    self.config["storage"] = {
+                        "type": loaded_config.storage.type,
+                        "path": loaded_config.storage.path
+                    }
+
+            # 向注册表注册组件
+            self._register_components()
+
+            # 初始化存储管理器
+            storage_config = self.config.get("storage", {})
+            storage_type = storage_config.get("type", "sqlite")
+
+            if storage_type == "sqlite":
+                db_path = storage_config.get("path", "knowledge_agent.db")
+                self._storage_manager = SQLiteStorageManager(db_path)
+                self._registry.set_instance("storage_manager", self._storage_manager)
+                self.logger.info(f"Initialized SQLite storage at {db_path}")
+            else:
+                self.logger.warning(f"Unknown storage type: {storage_type}, using default SQLite")
+                self._storage_manager = SQLiteStorageManager("knowledge_agent.db")
+                self._registry.set_instance("storage_manager", self._storage_manager)
+
+            # 初始化知识组织器
+            if self._storage_manager:
+                self._knowledge_organizer = KnowledgeOrganizerImpl(self._storage_manager)
+                self._registry.set_instance("knowledge_organizer", self._knowledge_organizer)
+                self.logger.info("Initialized knowledge organizer")
+            else:
+                self.logger.warning("Storage manager not available, knowledge organizer not initialized")
+
+            # 初始化搜索引擎
+            search_config = self.config.get("search", {})
+            index_dir = search_config.get("index_dir", "search_index")
+            self._search_engine = SearchEngineImpl(index_dir)
+            self._registry.set_instance("search_engine", self._search_engine)
+            self.logger.info(f"Initialized search engine with index at {index_dir}")
+
+            # 注入 storage_manager 到搜索引擎（用于分块搜索时获取完整条目和上下文）
+            if self._storage_manager and self._search_engine:
+                self._search_engine.set_storage_manager(self._storage_manager)
+
+            # 初始化 ContentChunker
+            from core.chunking.content_chunker import ContentChunker
+            self._content_chunker = ContentChunker()
+            self.logger.info("Initialized ContentChunker")
+
+            # 初始化数据处理器
+            self._initialize_data_processors()
+
+            # 初始化数据导入导出
+            self._data_import_export = DataImportExport(self._storage_manager)
+            self.logger.info("Initialized data import/export")
+
+            # 记录组件注册表状态
+            self._registry.log_status()
+
+            self.logger.info("Component initialization completed successfully")
+
+        except Exception as e:
+            self.logger.error(f"Failed to initialize components: {e}")
+            # 清理已部分初始化的组件
+            self._cleanup_components()
+            raise KnowledgeAgentError(f"Component initialization failed: {e}")
+
+    def _register_components(self) -> None:
+        """将所有组件注册到组件注册表。"""
+        self.logger.info("Registering components with registry...")
+
+        self._registry.register(
+            name="storage_manager",
+            component_type=SQLiteStorageManager,
+            dependencies=[]
+        )
+
+        self._registry.register(
+            name="knowledge_organizer",
+            component_type=KnowledgeOrganizerImpl,
+            dependencies=["storage_manager"]
+        )
+
+        self._registry.register(
+            name="search_engine",
+            component_type=SearchEngineImpl,
+            dependencies=[]
+        )
+
+        self._registry.register(
+            name="document_processor",
+            component_type=DocumentProcessor,
+            dependencies=[]
+        )
+
+        self._registry.register(
+            name="pdf_processor",
+            component_type=PDFProcessor,
+            dependencies=[]
+        )
+
+        self._registry.register(
+            name="code_processor",
+            component_type=CodeProcessor,
+            dependencies=[]
+        )
+
+        self._registry.register(
+            name="web_processor",
+            component_type=WebProcessor,
+            dependencies=[]
+        )
+
+        self.logger.info("Components registered with registry")
+
+    def _initialize_data_processors(self) -> None:
+        """初始化所有数据源处理器。"""
+        self.logger.info("Initializing data processors...")
+
+        # 初始化文档处理器
+        doc_processor = DocumentProcessor()
+        self._data_processors["document"] = doc_processor
+        self._data_processors["txt"] = doc_processor
+        self._data_processors["markdown"] = doc_processor
+        self._registry.set_instance("document_processor", doc_processor)
+
+        # 初始化 PDF 处理器
+        pdf_processor = PDFProcessor()
+        self._data_processors["pdf"] = pdf_processor
+        self._registry.set_instance("pdf_processor", pdf_processor)
+
+        # 初始化代码处理器
+        code_processor = CodeProcessor()
+        self._data_processors["code"] = code_processor
+        self._data_processors["python"] = code_processor
+        self._data_processors["javascript"] = code_processor
+        self._data_processors["java"] = code_processor
+        self._registry.set_instance("code_processor", code_processor)
+
+        # 初始化网页处理器
+        web_processor = WebProcessor()
+        self._data_processors["web"] = web_processor
+        self._registry.set_instance("web_processor", web_processor)
+
+        self.logger.info(f"Initialized {len(self._data_processors)} data processors")
+
+    @monitor_performance("collect_knowledge")
+    @track_errors({"component": "knowledge_collection"})
+    def collect_knowledge(self, source: DataSource) -> KnowledgeItem:
+        """
+        从数据源收集知识。
+
+        Args:
+            source: 要处理的数据源
+
+        Returns:
+            KnowledgeItem: 创建的知识条目
+
+        Raises:
+            KnowledgeAgentError: 收集失败时抛出
+        """
+        try:
+            self.logger.info(f"Collecting knowledge from: {source.path}")
+
+            # 根据数据源类型确定合适的处理器（未注册类型会抛出 NotImplementedError）
+            try:
+                processor = self._get_processor_for_source(source)
+            except NotImplementedError as e:
+                raise KnowledgeAgentError(
+                    f"No processor available for source type: {source.source_type.value}"
+                ) from e
+
+            # 验证数据源
+            if not processor.validate(source):
+                raise KnowledgeAgentError(f"Invalid data source: {source.path}")
+
+            # 处理数据源以创建知识条目
+            item = processor.process(source)
+
+            # 将条目保存到存储
+            if self._storage_manager:
+                self._storage_manager.save_knowledge_item(item)
+                self.logger.info(f"Saved knowledge item: {item.id}")
+
+            # 更新搜索索引
+            if self._search_engine:
+                self._search_engine.update_index(item)
+                self.logger.info(f"Updated search index for item: {item.id}")
+
+            # 对文档内容进行分块
+            if self._content_chunker:
+                try:
+                    chunks = self._content_chunker.chunk(item.content, item.title)
+                    for chunk in chunks:
+                        chunk.item_id = item.id
+                    # 保存分块到存储层
+                    if self._storage_manager:
+                        self._storage_manager.save_chunks(item.id, chunks)
+                    # 更新分块索引
+                    if self._search_engine:
+                        self._search_engine.update_chunk_index(item.id, chunks)
+                    self.logger.info(f"Created {len(chunks)} chunks for item: {item.id}")
+                except Exception as chunk_err:
+                    # 分块失败不影响主流程
+                    self.logger.warning(f"Failed to chunk content for item {item.id}: {chunk_err}")
+
+            self.logger.info(f"Successfully collected knowledge from: {source.path}")
+
+            return item
+
+        except Exception as e:
+            self.logger.error(f"Error collecting knowledge: {e}")
+            raise KnowledgeAgentError(f"Failed to collect knowledge: {e}")
+
+    def _get_processor_for_source(self, source: DataSource) -> DataSourceProcessor:
+        """
+        获取适合数据源的处理器。
+
+        Args:
+            source: 数据源
+
+        Returns:
+            匹配的 DataSourceProcessor 实例
+
+        Raises:
+            NotImplementedError: 没有注册对应类型的处理器时抛出
+        """
+        source_type = source.source_type.value.lower()
+
+        # 检查是否有直接匹配
+        if source_type in self._data_processors:
+            return self._data_processors[source_type]
+
+        # 通过文件扩展名进行更精确的匹配
+        if source.path:
+            ext = source.path.split('.')[-1].lower()
+            if ext in self._data_processors:
+                return self._data_processors[ext]
+
+            # 将常见扩展名映射到处理器
+            if ext in ['txt', 'md', 'doc', 'docx']:
+                processor = self._data_processors.get('document')
+                if processor:
+                    return processor
+            elif ext in ['py', 'js', 'java', 'cpp', 'c', 'ts']:
+                processor = self._data_processors.get('code')
+                if processor:
+                    return processor
+            elif ext == 'pdf':
+                processor = self._data_processors.get('pdf')
+                if processor:
+                    return processor
+
+        raise NotImplementedError(
+            f"No processor registered for source type: {source.source_type.value}"
+        )
+
+    @monitor_performance("organize_knowledge")
+    @track_errors({"component": "knowledge_organization"})
+    def organize_knowledge(self, item: KnowledgeItem) -> Dict[str, Any]:
+        """
+        组织知识条目（分类、打标签、查找关联关系）。
+
+        Args:
+            item: 要组织的知识条目
+
+        Returns:
+            包含组织结果的字典
+
+        Raises:
+            KnowledgeAgentError: 组织失败时抛出
+        """
+        try:
+            self.logger.info(f"Organizing knowledge item: {item.id}")
+
+            if not self._knowledge_organizer:
+                raise KnowledgeAgentError("Knowledge organizer not initialized")
+
+            # 对条目进行分类
+            categories = self._knowledge_organizer.classify(item)
+            self.logger.info(f"Classified into {len(categories)} categories")
+
+            # 生成标签
+            tags = self._knowledge_organizer.generate_tags(item)
+            self.logger.info(f"Generated {len(tags)} tags")
+
+            # 查找关联关系
+            relationships = self._knowledge_organizer.find_relationships(item)
+            self.logger.info(f"Found {len(relationships)} relationships")
+
+            # 用分类和标签更新条目
+            for category in categories:
+                item.add_category(category)
+            for tag in tags:
+                item.add_tag(tag)
+
+            # 保存已组织的条目
+            if self._storage_manager:
+                self._storage_manager.save_knowledge_item(item)
+
+            # 用关联关系更新知识图谱
+            if relationships:
+                self._knowledge_organizer.update_knowledge_graph(relationships)
+
+            return {
+                "item_id": item.id,
+                "categories": [{"id": c.id, "name": c.name, "confidence": c.confidence} for c in categories],
+                "tags": [{"id": t.id, "name": t.name} for t in tags],
+                "relationships": [
+                    {
+                        "target_id": r.target_id,
+                        "type": r.relationship_type.value,
+                        "strength": r.strength,
+                        "description": r.description
+                    }
+                    for r in relationships
+                ],
+                "success": True
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error organizing knowledge: {e}")
+            raise KnowledgeAgentError(f"Failed to organize knowledge: {e}")
+
+    @monitor_performance("search_knowledge")
+    @track_errors({"component": "knowledge_search"})
+    def search_knowledge(self, query: str, **options) -> Dict[str, Any]:
+        """
+        搜索知识条目。
+
+        Args:
+            query: 搜索查询字符串
+            **options: 搜索选项
+
+        Returns:
+            包含搜索结果的字典
+
+        Raises:
+            KnowledgeAgentError: 搜索失败时抛出
+        """
+        try:
+            self.logger.info(f"Searching knowledge: {query}")
+
+            if not self._search_engine:
+                raise KnowledgeAgentError("Search engine not initialized")
+
+            # 从关键字参数创建搜索选项
+            from core.models import SearchOptions
+
+            # 处理分类和标签过滤器
+            include_categories = []
+            if "category" in options and options["category"]:
+                include_categories = [options["category"]]
+            elif "include_categories" in options:
+                include_categories = options["include_categories"]
+
+            include_tags = []
+            if "tag" in options and options["tag"]:
+                include_tags = [options["tag"]]
+            elif "include_tags" in options:
+                include_tags = options["include_tags"]
+
+            search_options = SearchOptions(
+                max_results=options.get("max_results", 10),
+                include_categories=include_categories,
+                include_tags=include_tags,
+                sort_by=options.get("sort_by", "relevance"),
+                group_by_category=options.get("group_by_category", False)
+            )
+
+            # 执行搜索
+            search_results = self._search_engine.search(query, search_options)
+
+            # 转换为字典格式，施加内容大小控制
+            result_items = []
+            total_content_size = 0
+
+            for result in search_results.results:
+                # 延迟分块恢复：检测缺失分块的大型知识项
+                matched_chunks_source = result.matched_chunks or []
+                if not matched_chunks_source and len(result.item.content) > CONTENT_TRUNCATION_THRESHOLD:
+                    matched_chunks_source = self._lazy_chunk_recovery(
+                        result.item, query
+                    )
+
+                # content 字段截断
+                content = result.item.content
+                if len(content) > CONTENT_TRUNCATION_THRESHOLD:
+                    content = content[:CONTENT_TRUNCATION_THRESHOLD] + "..."
+
+                result_content_size = len(content)
+
+                # 对 matched_chunks 施加数量限制和内容截断
+                truncated_matched = []
+                matched_source = matched_chunks_source[:MAX_MATCHED_CHUNKS]
+                for mc in matched_source:
+                    mc_dict = mc.to_dict()
+                    if len(mc_dict.get("content", "")) > MAX_CHUNK_CONTENT_SIZE:
+                        mc_dict["content"] = mc_dict["content"][:MAX_CHUNK_CONTENT_SIZE - 3] + "..."
+                    chunk_size = len(mc_dict.get("content", ""))
+                    # 单结果内容预算检查
+                    if result_content_size + chunk_size > MAX_RESULT_CONTENT_SIZE:
+                        break
+                    result_content_size += chunk_size
+                    truncated_matched.append(mc_dict)
+
+                # 对 context_chunks 施加数量限制和内容截断
+                truncated_context = []
+                context_source = result.context_chunks[:MAX_CONTEXT_CHUNKS] if result.context_chunks else []
+                for cc in context_source:
+                    cc_dict = cc.to_dict()
+                    if len(cc_dict.get("content", "")) > MAX_CHUNK_CONTENT_SIZE:
+                        cc_dict["content"] = cc_dict["content"][:MAX_CHUNK_CONTENT_SIZE - 3] + "..."
+                    chunk_size = len(cc_dict.get("content", ""))
+                    # 单结果内容预算检查
+                    if result_content_size + chunk_size > MAX_RESULT_CONTENT_SIZE:
+                        break
+                    result_content_size += chunk_size
+                    truncated_context.append(cc_dict)
+
+                # 所有结果总大小预算检查
+                if total_content_size + result_content_size > MAX_TOTAL_CONTENT_SIZE:
+                    break
+
+                total_content_size += result_content_size
+
+                result_items.append({
+                    "item_id": result.item.id,
+                    "title": result.item.title,
+                    "content": content,
+                    "source_type": result.item.source_type.value,
+                    "source_path": result.item.source_path,
+                    "categories": [{"id": c.id, "name": c.name} for c in result.item.categories],
+                    "tags": [{"id": t.id, "name": t.name} for t in result.item.tags],
+                    "relevance_score": result.relevance_score,
+                    "matched_fields": result.matched_fields,
+                    "matched_chunks": truncated_matched,
+                    "context_chunks": truncated_context,
+                })
+
+            results_dict = {
+                "query": search_results.query,
+                "total_results": search_results.total_found,
+                "search_time_ms": search_results.search_time_ms,
+                "results": result_items,
+                "grouped_results": search_results.grouped_results if search_results.grouped_results else {},
+                "suggestions": options.get("include_suggestions", False) and self._search_engine.suggest(query) or []
+            }
+
+            self.logger.info(f"Found {search_results.total_found} results in {search_results.search_time_ms:.2f}ms")
+
+            return results_dict
+
+        except Exception as e:
+            self.logger.error(f"Error searching knowledge: {e}")
+            raise KnowledgeAgentError(f"Failed to search knowledge: {e}")
+
+    def _lazy_chunk_recovery(
+        self, item: KnowledgeItem, query: str
+    ) -> list:
+        """
+        延迟分块恢复：对缺失分块的大型知识项进行即时分块。
+
+        优先尝试完整分块并持久化；若分块失败，则从原文中提取
+        包含查询关键词的片段作为降级方案。
+        """
+        from core.chunking.content_chunker import ContentChunker
+        from core.models.knowledge_chunk import KnowledgeChunk
+
+        # 尝试即时分块
+        try:
+            chunker = self._content_chunker or ContentChunker()
+            chunks = chunker.chunk(item.content, item.title)
+            if chunks:
+                for chunk in chunks:
+                    chunk.item_id = item.id
+                # 持久化到存储层和搜索索引
+                try:
+                    if self._storage_manager:
+                        self._storage_manager.save_chunks(item.id, chunks)
+                    if self._search_engine:
+                        self._search_engine.update_chunk_index(item.id, chunks)
+                    self.logger.info(
+                        f"延迟分块恢复成功，item_id={item.id}，生成 {len(chunks)} 个分块"
+                    )
+                except Exception as persist_err:
+                    # 持久化失败不影响本次搜索结果
+                    self.logger.warning(
+                        f"延迟分块持久化失败 item_id={item.id}: {persist_err}"
+                    )
+                return chunks
+        except Exception as chunk_err:
+            self.logger.warning(
+                f"延迟分块失败 item_id={item.id}: {chunk_err}"
+            )
+
+        # 降级：从原文中提取包含查询关键词的片段
+        return self._extract_keyword_snippets(item, query)
+
+    def _extract_keyword_snippets(
+        self, item: KnowledgeItem, query: str
+    ) -> list:
+        """
+        降级片段提取：从原文中提取包含查询关键词前后各约 500 字符的上下文。
+        """
+        from core.models.knowledge_chunk import KnowledgeChunk
+
+        content = item.content
+        keywords = query.strip().split()
+        if not keywords:
+            return []
+
+        snippets = []
+        seen_ranges = []
+        context_radius = 500
+
+        for keyword in keywords:
+            if not keyword:
+                continue
+            lower_content = content.lower()
+            lower_kw = keyword.lower()
+            pos = lower_content.find(lower_kw)
+            if pos == -1:
+                continue
+
+            start = max(0, pos - context_radius)
+            end = min(len(content), pos + len(keyword) + context_radius)
+
+            # 避免重叠片段
+            overlaps = False
+            for s, e in seen_ranges:
+                if start < e and end > s:
+                    overlaps = True
+                    break
+            if overlaps:
+                continue
+
+            seen_ranges.append((start, end))
+            snippet_text = content[start:end]
+            snippets.append(
+                KnowledgeChunk(
+                    item_id=item.id,
+                    chunk_index=len(snippets),
+                    content=snippet_text,
+                    heading=f"片段（关键词: {keyword}）",
+                    start_position=start,
+                    end_position=end,
+                )
+            )
+
+            if len(snippets) >= MAX_MATCHED_CHUNKS:
+                break
+
+        return snippets
+
+
+
+    def get_knowledge_item(self, item_id: str) -> Optional[KnowledgeItem]:
+        """
+        根据 ID 获取知识条目。
+
+        Args:
+            item_id: 要获取的条目 ID
+
+        Returns:
+            找到则返回 KnowledgeItem，否则返回 None
+
+        Raises:
+            KnowledgeAgentError: 获取失败时抛出
+        """
+        try:
+            self.logger.info(f"Retrieving knowledge item: {item_id}")
+
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+
+            item = self._storage_manager.get_knowledge_item(item_id)
+
+            if item:
+                self.logger.info(f"Successfully retrieved knowledge item: {item_id}")
+            else:
+                self.logger.info(f"Knowledge item not found: {item_id}")
+
+            return item
+
+        except Exception as e:
+            self.logger.error(f"Error retrieving knowledge item: {e}")
+            raise KnowledgeAgentError(f"Failed to retrieve knowledge item: {e}")
+
+    def list_knowledge_items(self, **filters) -> List[KnowledgeItem]:
+        """
+        列出知识条目，支持可选的过滤条件。
+
+        委托给存储层的 query_knowledge_items() 方法，
+        在数据库层面完成过滤和分页，避免加载全部数据到内存。
+
+        Args:
+            **filters: 过滤条件（category、tag、limit、offset）
+
+        Returns:
+            知识条目列表
+
+        Raises:
+            KnowledgeAgentError: 列出失败时抛出
+        """
+        try:
+            self.logger.info("Listing knowledge items")
+
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+
+            category = filters.get("category")
+            tag = filters.get("tag")
+            limit = filters.get("limit", 50)
+            offset = filters.get("offset", 0)
+            items = self._storage_manager.query_knowledge_items(
+                category=category, tag=tag, limit=limit, offset=offset
+            )
+
+            self.logger.info(f"Retrieved {len(items)} knowledge items")
+
+            return items
+
+        except Exception as e:
+            self.logger.error(f"Error listing knowledge items: {e}")
+            raise KnowledgeAgentError(f"Failed to list knowledge items: {e}")
+
+    def export_data(self, format: str = "json") -> Dict[str, Any]:
+        """
+        导出所有知识数据。
+
+        Args:
+            format: 导出格式（目前仅支持 'json'）
+
+        Returns:
+            导出的数据字典
+
+        Raises:
+            KnowledgeAgentError: 导出失败时抛出
+        """
+        try:
+            self.logger.info(f"Exporting data in {format} format")
+
+            if not self._data_import_export:
+                raise KnowledgeAgentError("Data import/export not initialized")
+
+            if format.lower() != "json":
+                raise KnowledgeAgentError(f"Unsupported export format: {format}")
+
+            export_data = self._data_import_export.export_to_json()
+
+            self.logger.info(f"Successfully exported {len(export_data.get('knowledge_items', []))} items")
+
+            return export_data
+
+        except Exception as e:
+            self.logger.error(f"Error exporting data: {e}")
+            raise KnowledgeAgentError(f"Failed to export data: {e}")
+
+    def import_data(self, data: Dict[str, Any]) -> bool:
+        """
+        导入知识数据。
+
+        Args:
+            data: 要导入的数据字典（必须包含 knowledge_items、categories、tags、relationships）
+
+        Returns:
+            成功返回 True，否则返回 False
+
+        Raises:
+            KnowledgeAgentError: 导入失败时抛出
+        """
+        try:
+            self.logger.info("Importing knowledge data")
+
+            if not self._data_import_export:
+                raise KnowledgeAgentError("Data import/export not initialized")
+
+            if not isinstance(data, dict):
+                raise KnowledgeAgentError("Import data must be a dictionary")
+
+            result = self._data_import_export.import_from_json(data)
+
+            # import_from_json 返回结果摘要字典，判断是否成功导入
+            success = isinstance(result, dict) and result.get("error_count", 0) == 0
+
+            if success:
+                item_count = len(data.get("knowledge_items", []))
+                self.logger.info(f"Successfully imported {item_count} items")
+
+                # 导入后重建搜索索引
+                if self._search_engine and self._storage_manager:
+                    self.logger.info("Rebuilding search index after import...")
+                    all_items = self._storage_manager.get_all_knowledge_items()
+                    self._search_engine.rebuild_index(all_items)
+                    self.logger.info("Search index rebuilt")
+            else:
+                self.logger.warning("Import completed with warnings or partial success")
+
+            return success
+
+        except Exception as e:
+            self.logger.error(f"Error importing data: {e}")
+            raise KnowledgeAgentError(f"Failed to import data: {e}")
+
+    def get_similar_items(self, item_id: str, limit: int = 10) -> List[KnowledgeItem]:
+        """
+        查找与给定知识条目相似的条目。
+
+        Args:
+            item_id: 参考条目的 ID
+            limit: 返回的最大相似条目数量
+
+        Returns:
+            相似知识条目列表
+
+        Raises:
+            KnowledgeAgentError: 获取失败时抛出
+        """
+        try:
+            self.logger.info(f"Finding similar items to: {item_id}")
+
+            if not self._search_engine:
+                raise KnowledgeAgentError("Search engine not initialized")
+
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+
+            item = self._storage_manager.get_knowledge_item(item_id)
+            if not item:
+                raise KnowledgeAgentError(f"Knowledge item not found: {item_id}")
+
+            similar_items = self._search_engine.get_similar_items(item, limit=limit)
+
+            self.logger.info(f"Found {len(similar_items)} similar items")
+
+            return similar_items
+
+        except Exception as e:
+            self.logger.error(f"Error finding similar items: {e}")
+            raise KnowledgeAgentError(f"Failed to find similar items: {e}")
+
+    def get_all_categories(self) -> List[Category]:
+        """
+        返回所有分类。
+
+        Returns:
+            分类列表
+
+        Raises:
+            KnowledgeAgentError: 获取失败时抛出
+        """
+        try:
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+            return self._storage_manager.get_all_categories()
+        except Exception as e:
+            self.logger.error(f"Error retrieving categories: {e}")
+            raise KnowledgeAgentError(f"Failed to retrieve categories: {e}")
+
+    def get_all_tags(self) -> List[Tag]:
+        """
+        返回所有标签。
+
+        Returns:
+            标签列表
+
+        Raises:
+            KnowledgeAgentError: 获取失败时抛出
+        """
+        try:
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+            return self._storage_manager.get_all_tags()
+        except Exception as e:
+            self.logger.error(f"Error retrieving tags: {e}")
+            raise KnowledgeAgentError(f"Failed to retrieve tags: {e}")
+
+    def get_knowledge_graph(self) -> Dict[str, Any]:
+        """
+        返回知识图谱的节点和边数据。
+
+        遍历所有知识条目作为节点，获取所有关系作为边，
+        返回 {"nodes": [...], "edges": [...]} 格式的图谱数据。
+
+        Returns:
+            包含 nodes 和 edges 的字典
+
+        Raises:
+            KnowledgeAgentError: 获取失败时抛出
+        """
+        try:
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+
+            all_items = self._storage_manager.get_all_knowledge_items()
+            nodes = [
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "source_type": item.source_type.value,
+                }
+                for item in all_items
+            ]
+
+            edges = []
+            for item in all_items:
+                relationships = self._storage_manager.get_relationships_for_item(item.id)
+                for rel in relationships:
+                    edges.append({
+                        "source_id": rel.source_id,
+                        "target_id": rel.target_id,
+                        "relationship_type": rel.relationship_type.value,
+                        "strength": rel.strength,
+                    })
+
+            return {"nodes": nodes, "edges": edges}
+
+        except Exception as e:
+            self.logger.error(f"Error retrieving knowledge graph: {e}")
+            raise KnowledgeAgentError(f"Failed to retrieve knowledge graph: {e}")
+
+    def update_knowledge_item(self, item_id: str, updates: Dict[str, Any]) -> bool:
+        """
+        更新知识条目并重新索引。
+
+        Args:
+            item_id: 知识条目 ID
+            updates: 可更新字段字典
+
+        Returns:
+            更新成功返回 True，条目不存在返回 False
+
+        Raises:
+            KnowledgeAgentError: 更新失败时抛出
+        """
+        try:
+            self.logger.info(f"Updating knowledge item: {item_id}")
+
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+
+            success = self._storage_manager.update_knowledge_item(item_id, updates)
+
+            # 如果更新成功且搜索引擎可用，重新索引该条目
+            if success and self._search_engine:
+                updated_item = self._storage_manager.get_knowledge_item(item_id)
+                if updated_item:
+                    self._search_engine.update_index(updated_item)
+                    self.logger.info(f"Re-indexed knowledge item: {item_id}")
+
+            return success
+
+        except Exception as e:
+            self.logger.error(f"Error updating knowledge item: {e}")
+            raise KnowledgeAgentError(f"Failed to update knowledge item: {e}")
+
+    def delete_knowledge_item(self, item_id: str) -> bool:
+        """
+        删除知识条目及其关联数据和搜索索引。
+
+        Args:
+            item_id: 知识条目 ID
+
+        Returns:
+            删除成功返回 True，条目不存在返回 False
+
+        Raises:
+            KnowledgeAgentError: 删除失败时抛出
+        """
+        try:
+            self.logger.info(f"Deleting knowledge item: {item_id}")
+
+            if not self._storage_manager:
+                raise KnowledgeAgentError("Storage manager not initialized")
+
+            success = self._storage_manager.delete_knowledge_item(item_id)
+
+            # 如果删除成功且搜索引擎可用，从索引中移除
+            if success and self._search_engine:
+                try:
+                    self._search_engine.remove_from_index(item_id)
+                    self.logger.info(f"Removed from search index: {item_id}")
+                except Exception as index_err:
+                    # 索引删除失败不影响主流程
+                    self.logger.warning(
+                        f"Failed to remove item from search index: {index_err}"
+                    )
+
+                try:
+                    self._search_engine.remove_chunks_from_index(item_id)
+                    self.logger.info(f"Removed chunk index for: {item_id}")
+                except Exception as chunk_idx_err:
+                    self.logger.warning(f"Failed to remove chunk index: {chunk_idx_err}")
+
+            return success
+
+        except Exception as e:
+            self.logger.error(f"Error deleting knowledge item: {e}")
+            raise KnowledgeAgentError(f"Failed to delete knowledge item: {e}")
+
+    def batch_collect_knowledge(
+        self,
+        directory_path: str,
+        file_pattern: str = "*",
+        recursive: bool = False
+    ) -> Dict[str, Any]:
+        """
+        遍历目录批量处理文件。
+
+        对目录中匹配模式的文件逐一进行类型检测和知识收集，
+        单文件失败不会中断整个流程。
+
+        Args:
+            directory_path: 目录路径
+            file_pattern: 文件匹配模式（glob 格式），支持逗号分隔的多个模式
+                         例如: "*.pdf" 或 "*.doc,*.docx,*.pdf"
+            recursive: 是否递归处理子目录
+
+        Returns:
+            批量处理结果摘要，包含 success_count、failure_count、
+            failed_files 和 errors
+
+        Raises:
+            KnowledgeAgentError: 目录路径无效或安全验证失败时抛出
+        """
+        self.logger.info(
+            f"Batch collecting knowledge from: {directory_path} "
+            f"(pattern={file_pattern}, recursive={recursive})"
+        )
+
+        # 安全验证：从配置中读取安全策略
+        security_config = self.config.get("security", {})
+        allowed_paths = security_config.get("allowed_paths")
+        blocked_extensions = security_config.get("blocked_extensions")
+        validator = SecurityValidator(
+            allowed_paths=allowed_paths,
+            blocked_extensions=blocked_extensions,
+        )
+        if not validator.validate_path(directory_path):
+            raise KnowledgeAgentError(
+                f"Directory path failed security validation: {directory_path}"
+            )
+
+        dir_path = Path(directory_path)
+        if not dir_path.is_dir():
+            raise KnowledgeAgentError(
+                f"Directory does not exist: {directory_path}"
+            )
+
+        # 支持多个模式（逗号分隔）
+        patterns = [p.strip() for p in file_pattern.split(',')]
+        matched_files = []
+
+        for pattern in patterns:
+            if recursive:
+                matched_files.extend(dir_path.rglob(pattern))
+            else:
+                matched_files.extend(dir_path.glob(pattern))
+
+        # 去重并只处理文件，跳过目录
+        matched_files = list(set([f for f in matched_files if f.is_file()]))
+
+        success_count = 0
+        failure_count = 0
+        failed_files: List[str] = []
+        errors: List[str] = []
+        collected_items: List[Dict[str, Any]] = []
+
+        for file_path in matched_files:
+            file_str = str(file_path)
+            try:
+                if not validator.validate_path(file_str):
+                    failure_count += 1
+                    failed_files.append(file_str)
+                    errors.append(f"Security validation failed: {file_str}")
+                    continue
+
+                # 自动检测数据源类型
+                source_type = SourceTypeDetector.detect(file_str)
+                source = DataSource(
+                    path=file_str,
+                    source_type=source_type,
+                    metadata={"batch_source": directory_path},
+                )
+
+                item = self.collect_knowledge(source)
+                success_count += 1
+                collected_items.append({
+                    "item_id": item.id,
+                    "title": item.title,
+                    "source_path": file_str,
+                    "source_type": source_type.value
+                })
+
+            except Exception as e:
+                # 单文件失败不中断整个流程
+                failure_count += 1
+                failed_files.append(file_str)
+                errors.append(f"{file_str}: {e}")
+                self.logger.warning(f"Failed to process file: {file_str}, error: {e}")
+
+        self.logger.info(
+            f"Batch collection completed: {success_count} succeeded, "
+            f"{failure_count} failed out of {len(matched_files)} files"
+        )
+
+        return {
+            "success_count": success_count,
+            "failure_count": failure_count,
+            "total_count": len(matched_files),
+            "failed_files": failed_files,
+            "collected_items": collected_items,
+        }
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """
+        获取知识库统计信息。
+
+        使用 SQL COUNT 聚合查询，避免加载全部数据到内存。
+
+        Returns:
+            统计信息字典
+        """
+        try:
+            self.logger.info("Retrieving knowledge base statistics")
+
+            if not self._storage_manager:
+                return {
+                    "total_items": 0,
+                    "total_categories": 0,
+                    "total_tags": 0,
+                    "total_relationships": 0,
+                    "message": "Storage manager not initialized",
+                }
+
+            stats = self._storage_manager.get_database_stats()
+            return {
+                "total_items": stats.get("knowledge_items", 0),
+                "total_categories": stats.get("categories", 0),
+                "total_tags": stats.get("tags", 0),
+                "total_relationships": stats.get("relationships", 0),
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error retrieving statistics: {e}")
+            raise KnowledgeAgentError(f"Failed to retrieve statistics: {e}")
+
+    def get_performance_metrics(self) -> Dict[str, Any]:
+        """
+        获取所有操作的性能指标。
+
+        Returns:
+            性能指标字典
+        """
+        monitor = get_performance_monitor()
+        return monitor.get_metrics()
+
+    def get_error_summary(self) -> Dict[str, Any]:
+        """
+        获取错误摘要。
+
+        Returns:
+            错误摘要字典
+        """
+        tracker = get_error_tracker()
+        return tracker.get_error_summary()
+
+    def log_monitoring_report(self) -> None:
+        """记录综合监控报告。"""
+        self.logger.info("\n" + "=" * 60)
+        self.logger.info("KNOWLEDGE AGENT MONITORING REPORT")
+        self.logger.info("=" * 60)
+
+        try:
+            stats = self.get_statistics()
+            self.logger.info("\nKnowledge Base Statistics:")
+            for key, value in stats.items():
+                self.logger.info(f"  {key}: {value}")
+        except Exception as e:
+            self.logger.error(f"Failed to get statistics: {e}")
+
+        monitor = get_performance_monitor()
+        monitor.log_metrics()
+
+        tracker = get_error_tracker()
+        tracker.log_error_summary()
+
+        self.logger.info("=" * 60)
+
+    def shutdown(self) -> None:
+        """关闭知识管理智能体并清理资源。"""
+        if self._shutdown_requested:
+            self.logger.warning("Shutdown already in progress")
+            return
+
+        self._shutdown_requested = True
+
+        try:
+            self.logger.info("=" * 60)
+            self.logger.info("Initiating knowledge agent core shutdown...")
+            self.logger.info("=" * 60)
+
+            self._cleanup_components()
+
+            self._initialized = False
+            self.logger.info("=" * 60)
+            self.logger.info("Knowledge agent core shutdown complete")
+            self.logger.info("=" * 60)
+
+        except Exception as e:
+            self.logger.error(f"Error during shutdown: {e}")
+            raise KnowledgeAgentError(f"Failed to shutdown cleanly: {e}")
+
+    def _cleanup_components(self) -> None:
+        """清理所有已初始化的组件。"""
+        cleanup_errors = []
+
+        if self._search_engine:
+            try:
+                self.logger.info("Closing search engine...")
+                if hasattr(self._search_engine, 'close'):
+                    self._search_engine.close()
+                self.logger.info("Search engine closed")
+            except Exception as e:
+                error_msg = f"Failed to close search engine: {e}"
+                self.logger.error(error_msg)
+                cleanup_errors.append(error_msg)
+
+        if self._storage_manager:
+            try:
+                self.logger.info("Closing storage manager...")
+                if hasattr(self._storage_manager, 'close'):
+                    self._storage_manager.close()
+                self.logger.info("Storage manager closed")
+            except Exception as e:
+                error_msg = f"Failed to close storage manager: {e}"
+                self.logger.error(error_msg)
+                cleanup_errors.append(error_msg)
+
+        if self._knowledge_organizer:
+            try:
+                self.logger.info("Cleaning up knowledge organizer...")
+                if hasattr(self._knowledge_organizer, 'cleanup'):
+                    self._knowledge_organizer.cleanup()
+                self.logger.info("Knowledge organizer cleaned up")
+            except Exception as e:
+                error_msg = f"Failed to cleanup knowledge organizer: {e}"
+                self.logger.error(error_msg)
+                cleanup_errors.append(error_msg)
+
+        self._content_chunker = None
+
+        if self._data_processors:
+            try:
+                self.logger.info("Cleaning up data processors...")
+                for processor_name, processor in self._data_processors.items():
+                    if hasattr(processor, 'cleanup'):
+                        processor.cleanup()
+                self.logger.info(f"Cleaned up {len(self._data_processors)} data processors")
+            except Exception as e:
+                error_msg = f"Failed to cleanup data processors: {e}"
+                self.logger.error(error_msg)
+                cleanup_errors.append(error_msg)
+
+        if cleanup_errors:
+            self.logger.warning(f"Cleanup completed with {len(cleanup_errors)} errors")
+        else:
+            self.logger.info("All components cleaned up successfully")
+
+    def is_initialized(self) -> bool:
+        """检查智能体是否已完全初始化。"""
+        return self._initialized
+
+    def is_shutdown_requested(self) -> bool:
+        """检查是否已请求关闭。"""
+        return self._shutdown_requested

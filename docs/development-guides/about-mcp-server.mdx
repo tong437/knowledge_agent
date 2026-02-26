@@ -1,0 +1,37 @@
+---
+title: 什么是 MCP Server
+description: 了解 MCP 服务器的基本概念及其在项目开发中的作用。
+icon: server
+---
+
+## MCP Server 概述
+
+**MCP Server（Model Context Protocol Server）** 是一种基于 [Model Context Protocol](https://modelcontextprotocol.io/) 标准的服务端实现，用于为大语言模型（LLM）提供结构化的上下文数据与可调用的工具接口。
+
+它在项目中充当 **模型与外部系统之间的桥梁**，使模型能够访问实时数据、调用自定义 API，或与其他智能体进行协作。
+
+### 核心功能
+
+MCP Server 通过定义资源（Resources）和工具（Tools），让 LLM 能够在安全、受控的环境下访问外部信息或执行任务。
+
+### 运行方式
+
+服务器通常以独立进程形式运行，并通过标准协议（如 HTTP 或 SSE）与客户端交互。
+
+### 在项目中的作用
+
+在实验室项目中，MCP Server 用于扩展模型能力，例如连接数据库、管理实验任务、执行分析指令等。
+
+> **提示**  
+> MCP Server 是 **大语言模型应用层的重要组成部分**。  
+> 通过模块化设计，你可以根据项目需求自由扩展功能，而无需修改核心模型逻辑。
+
+## 下一步
+
+了解 MCP Server 的项目结构和开发流程，请参阅以下指南：
+
+- **[MCP 协议官方文档](https://modelcontextprotocol.io/)**  
+  官方文档，详细介绍 MCP 协议的设计理念、规范和使用方法。
+
+- **[MCP Server 列表](https://mcpservers.org/)**  
+  一个收集了各种 MCP Server 实现的资源库，方便查找和参考不同的服务器。

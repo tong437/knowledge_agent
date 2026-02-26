@@ -1,0 +1,152 @@
+---
+title: 使用 SOPS 管理环境密钥
+description: 介绍如何在 MCP Server 项目中使用 SOPS 工具来加密和管理敏感信息。
+---
+
+## 阅读前提示
+
+在开始之前，建议你已经完成了 SOPS 和 Age 的安装与配置。如果还没有，请先参考 **先决条件 - SOPS 与 Age 安装指南** 进行相关设置。
+
+## 使用 SOPS 加密和解密文件
+
+### 获取 Age 公钥
+
+执行以下命令获取你的 Age 公钥。
+
+**Windows（PowerShell，管理员模式）：**
+
+```powershell
+.\windows.generate-age-key.ps1
+```
+
+**Linux / macOS：**
+
+```bash
+bash linux-macos.generate-age-key.sh
+```
+
+你会得到类似下列内容的输出：
+
+```plaintext
+Generating Age key...
+age-keygen: warning: writing secret key to a world-readable file
+Public key: agexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+=== Public key ===
+agexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+Private key saved at C:\Users\ruida\.config\sops\keys\age.key
+Keep it safe! Do not share.
+
+Environment variable SOPS_AGE_KEY_FILE set to C:\Users\ruida\.config\sops\keys\age.key
+You may need to restart your terminal for the change to take effect in new sessions.
+```
+
+如果已经生成过密钥，输出类似：
+
+```plaintext
+Age key already exists: C:\Users\ruida\.config\sops\keys\age.key
+
+=== Public key ===
+agexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+Private key saved at C:\Users\ruida\.config\sops\keys\age.key
+Keep it safe! Do not share.
+
+Environment variable SOPS_AGE_KEY_FILE set to C:\Users\ruida\.config\sops\keys\age.key
+You may need to restart your terminal for the change to take effect in new sessions.
+```
+
+注意事项：
+
+* 复制 `Public key` 部分的内容，后续加密文件时需要使用该公钥
+* 脚本会设置 `SOPS_AGE_KEY_FILE` 环境变量指向你的私钥文件路径，SOPS 会自动使用该私钥进行解密，请确保该环境变量已生效
+
+### 更新环境变量（如尚未生效）
+
+**Windows（PowerShell）：**
+
+```powershell
+$env:SOPS_AGE_KEY_FILE="$HOME\.config\sops\keys\age.key"
+echo $env:SOPS_AGE_KEY_FILE
+```
+
+**Linux / macOS：**
+
+```bash
+source ~/.bashrc  # 或 source ~/.zshrc，取决于你使用的 shell
+echo $SOPS_AGE_KEY_FILE
+```
+
+### 添加 SOPS 配置文件
+
+将 `modules/YA_Secrets/.sops.yaml` 文件复制到 MCP Server **项目根目录** 下，内容如下：
+
+```yaml
+creation_rules:
+  - age: >-
+      age13r4554wpmkkmh6lk2ky9d68nj7ctfgqv9d4f4ndu66h9usnxjfwsdcqvr7,
+      your_generated_public_key_here
+```
+
+将 `your_generated_public_key_here` 替换为你获取到的 Age 公钥。
+
+说明：
+
+* 公钥 `age13r4554wpmkkmh6lk2ky9d68nj7ctfgqv9d4f4ndu66h9usnxjfwsdcqvr7` 是 YA 组织的管理员公钥
+* 保留该公钥可以确保 YA 主仓库也能解密你的环境密钥文件
+
+### 管理密钥文件
+
+执行以下脚本来管理你的环境密钥文件。
+
+**Windows（PowerShell，管理员模式）：**
+
+```powershell
+.\windows.manage.ps1
+```
+
+**Linux / macOS：**
+
+```bash
+bash linux-macos.manage.sh
+```
+
+脚本会使用默认文本编辑器（优先 VS Code）打开一个临时的 YAML 文件，你可以在其中添加或修改环境密钥。
+
+默认内容示例：
+
+```yaml
+secrets:
+  api_key: value
+  database_password: value
+```
+
+保存并关闭编辑器后，脚本会自动使用 SOPS 对文件进行加密，并将结果保存为项目根目录下的 `env.yaml` 文件。
+
+## 在 MCP Server 中使用加密的环境密钥
+
+在 MCP Server 代码中，可以使用以下示例来加载并解密 `env.yaml` 中的环境密钥：
+
+```python
+from modules.YA_Secrets.secrets_parser import load_secrets, get_secret
+from modules.YA_Common.utils.logger import get_logger
+
+logger = get_logger("hello_secrets")
+
+if __name__ == "__main__":
+    logger.info(f"All secrets: {load_secrets()}")
+    logger.info(f"API KEY = {get_secret('api_key')}")
+```
+
+示例输出如下：
+
+```plaintext
+2025-11-25 19:35:40 | INFO     | hello_secrets:<module>:7 - All secrets: {'api_key': 'value', 'database_password': 'value'}
+2025-11-25 19:35:40 | INFO     | hello_secrets:<module>:8 - API KEY = value
+```
+
+说明：
+
+* `load_secrets()` 返回解密后的所有密钥字典
+* `get_secret(name)` 根据密钥名称获取对应的密钥值

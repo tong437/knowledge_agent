@@ -1,0 +1,199 @@
+---
+title: Git
+description: 在开始项目开发之前，确保你已经安装并配置好了 Git 版本控制系统。
+---
+
+## 什么是 Git
+
+- **Git** 是目前世界上最流行的 **分布式版本控制系统**，由 [Linus Torvalds](https://git-scm.com/) 创建，旨在高效地管理源代码的历史变更与协作开发。
+- **Git** 支持多人协作、分支管理、版本回滚、远程同步等核心功能，是现代软件开发的基础工具。
+
+### 核心特性
+
+- 分布式架构：每个开发者都拥有完整代码仓库副本  
+- 高效分支管理：轻量快速的分支与合并操作  
+- 离线工作流：无需网络即可提交与回滚  
+- 完整历史记录：精确追踪每次提交与变更者  
+- 跨平台支持：适用于 macOS、Linux、Windows  
+
+### 与其他工具对比
+
+| 功能       | Git                              | SVN      | Mercurial |
+|------------|----------------------------------|----------|-----------|
+| 架构       | 分布式                           | 集中式   | 分布式    |
+| 分支操作   | 快速灵活                         | 笨重     | 一般      |
+| 离线使用   | 支持                             | 不支持   | 支持      |
+| 远程同步   | 灵活（支持 GitHub/GitLab）       | 受限     | 一般      |
+
+---
+
+## 系统要求
+
+**最低要求：**
+
+- **操作系统**：macOS / Linux / Windows  
+- **版本建议**：Git ≥ 2.30  
+- 推荐使用官方或包管理器提供的 **最新稳定版 Git**
+
+---
+
+## 安装步骤
+
+### 1. 检查是否已安装 Git
+
+运行以下命令查看是否安装 Git：
+
+```bash
+git --version
+````
+
+若输出版本号（如 `git version 2.43.0`），则说明已安装。
+
+### 2. 安装 Git
+
+根据你的操作系统选择安装方式。
+
+#### Windows
+
+**使用官方安装包（推荐）**
+
+从 [Git for Windows](https://git-scm.com/download/win) 下载并运行安装程序。
+安装时建议保留默认选项（包括 Git Bash 与 PATH 配置）。
+
+或使用包管理器安装：
+
+```powershell
+winget install --id Git.Git -e --source winget
+```
+
+或使用 Scoop：
+
+```powershell
+scoop install git
+```
+
+#### Linux
+
+**使用系统包管理器：**
+
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt install git -y
+
+# Fedora
+sudo dnf install git -y
+
+# Arch Linux
+sudo pacman -S git
+```
+
+#### macOS
+
+**使用 Homebrew 安装（推荐）：**
+
+```bash
+brew install git
+```
+
+或通过 Xcode 命令行工具安装：
+
+```bash
+xcode-select --install
+```
+
+### 3. 验证安装
+
+```bash
+git --version
+```
+
+若能正确输出版本号，则安装成功。
+
+---
+
+## 初始配置
+
+### 设置用户名与邮箱
+
+每次提交都会记录用户名和邮箱，用于标识提交者。
+
+```bash
+git config --global user.name "你的名字"
+git config --global user.email "you@example.com"
+```
+
+### 设置默认分支名为 main（推荐）
+
+```bash
+git config --global init.defaultBranch main
+```
+
+### 配置颜色输出（可选）
+
+让 Git 输出带颜色的信息以提升可读性：
+
+```bash
+git config --global color.ui auto
+```
+
+### 检查所有配置
+
+```bash
+git config --list
+```
+
+---
+
+## 常用命令速览
+
+| 命令                          | 说明          |
+| --------------------------- | ----------- |
+| `git init`                  | 初始化一个新的本地仓库 |
+| `git clone <repo>`          | 克隆远程仓库      |
+| `git add <file>`            | 将文件加入暂存区    |
+| `git commit -m "msg"`       | 提交更改并附带说明   |
+| `git status`                | 查看当前工作区状态   |
+| `git log`                   | 查看提交历史      |
+| `git branch`                | 列出或创建分支     |
+| `git switch <branch>`       | 切换分支        |
+| `git merge <branch>`        | 合并分支        |
+| `git pull`                  | 从远程仓库拉取更新   |
+| `git push`                  | 推送本地提交到远程仓库 |
+| `git remote -v`             | 查看远程仓库地址    |
+| `git config --list`         | 查看当前所有配置    |
+| `git reset --hard <commit>` | 回退到指定提交版本   |
+
+---
+
+## 常见问题
+
+### 命令未找到（command not found）
+
+如果运行 `git` 时提示未找到命令，请确认 Git 已正确安装并加入系统 PATH。
+Windows 用户可尝试重启终端或系统。
+
+### SSH 连接失败
+
+若执行 `ssh -T git@github.com` 时失败，请检查：
+
+* 是否已添加正确的 SSH 公钥
+* 本地 `~/.ssh/config` 配置是否冲突
+* SSH 代理是否在运行
+
+### 更多参考
+
+* 官方文档：[https://git-scm.com/doc](https://git-scm.com/doc)
+* GitHub 教程：[https://docs.github.com/en/get-started](https://docs.github.com/en/get-started)
+
+---
+
+## 下一步
+
+完成 Git 安装与配置后，建议继续阅读以下文档以深入了解 Git 的使用：
+
+* **可视化 Git 的工作原理**
+  “Learning Git Branching” 是非常优秀的交互式教程，可以在沙盒中执行命令并直观地理解 Git 的分支与合并机制。
+  [https://learngitbranching.js.org/?locale=zh_CN](https://learngitbranching.js.org/?locale=zh_CN)
+
+* **SSH 配置**
+  了解如何生成 SSH 密钥对并配置到 GitHub/GitLab，实现免密码的安全连接。
